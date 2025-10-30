@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Riesgo Cardiometabólico Integral (v2.0)</title>
+    <title>Calculadora de Riesgo Cardiometabólico Integral (v2.0 - Impresión)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Estilos personalizados para la tesis */
@@ -24,6 +24,53 @@
         .shadow-glow {
             box-shadow: 0 0 15px rgba(185, 28, 28, 0.3);
         }
+        
+        /* ==== (NUEVO) SECCIÓN CSS DE IMPRESIÓN ==== */
+        @media print {
+            /* Oculta todo lo que tenga la clase 'no-print' */
+            .no-print {
+                display: none !important;
+            }
+            
+            /* Resetea el cuerpo para imprimir */
+            body {
+                padding: 0;
+                margin: 0;
+                background-color: #ffffff;
+            }
+            
+            /* Ajusta el contenedor principal para impresión */
+            .max-w-6xl {
+                max-width: 100% !important;
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            /* Asegura que el encabezado y los resultados sean visibles */
+            header, #results-section {
+                display: block !important;
+            }
+            
+            /* Ajusta el grid para que se vea bien en una hoja A4 */
+            #results-section .grid {
+                display: block !important;
+            }
+            
+            /* Asegura que los colores de riesgo se impriman */
+            .risk-low, .risk-moderate, .risk-high, .risk-very-high {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                background-color: inherit;
+            }
+            
+            /* Opcional: Oculta logos de placeholder si no cargan */
+            img[src^="https://placehold.co"] {
+                display: none;
+            }
+        }
+        /* ==== FIN DE SECCIÓN DE IMPRESIÓN ==== */
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -41,19 +88,19 @@
                     <img src="https://placehold.co/80x80/374151/ffffff?text=LICAM" alt="Logo LICAM" class="h-16 w-16 object-contain rounded-full shadow-md">
                 </a>
             </div>
-            
+           
             <h1 class="text-3xl md:text-4xl font-bold ipn-accent">
                 Calculadora de Riesgo Cardiometabólico Integral
             </h1>
-            <p class="text-lg text-gray-700 mt-2">
+            <p class="text-lg text-gray-700 mt-2 no-print">
                 Proyecto de Tesis - Ingeniería en Biotecnología
             </p>
         </header>
 
-        <form id="calc-form">
+        <form id="calc-form" class="no-print">
             <div id="validation-message" class="hidden p-3 mb-4 rounded-lg bg-red-100 text-red-700 font-semibold"></div>
             <div id="input-form">
-                
+               
                 <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">1. Datos Personales</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div>
@@ -272,7 +319,7 @@
                         </select>
                     </div>
                 </div>
-                
+               
                 <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">7. Diagnósticos y Tratamiento</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
                     <div class="p-3 border rounded-md bg-gray-50">
@@ -369,7 +416,7 @@
                 <div class="p-6 rounded-xl border-2 space-y-4">
                     <h3 class="text-xl font-semibold mb-3 ipn-accent">Perfil de Riesgo</h3>
                     <div id="global-risk-result" class="text-center p-4 rounded-lg font-bold text-2xl mb-4 transition duration-300"></div>
-                    
+                   
                     <div>
                         <h4 class="font-semibold text-gray-700">Métricas Antropométricas:</h4>
                         <ul class="list-disc list-inside text-sm text-gray-600">
@@ -413,9 +460,9 @@
                 </div>
             </div>
 
-            <div class="mt-8">
-                <button id="copy-button" class="w-full py-2 px-4 border border-green-600 rounded-lg shadow-sm text-sm font-medium text-white bg-green-500 hover:bg-green-600 transition duration-150 ease-in-out">
-                    Copiar Resultados y Recomendaciones
+            <div class="mt-8 no-print">
+                <button id="print-button" class="w-full py-2 px-4 border border-blue-600 rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition duration-150 ease-in-out">
+                    Imprimir Reporte (PDF)
                 </button>
             </div>
 
@@ -424,8 +471,8 @@
             </div>
         </div>
 
-        <div class="border-t pt-4 mt-8"></div> 
-        <div id="project-info" class="p-4 bg-gray-50 rounded-lg text-sm">
+        <div class="border-t pt-4 mt-8 no-print"></div> 
+        <div id="project-info" class="p-4 bg-gray-50 rounded-lg text-sm no-print">
              <h3 class="font-bold text-lg ipn-accent mb-2 border-b pb-1">Información del Proyecto y Colaboradores</h3>
              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
@@ -436,7 +483,7 @@
                      <p class="font-semibold text-gray-700 mt-2">Institución:</p>
                      <p class="text-gray-600">
                          <a href="https://www.esm.ipn.mx/" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
-                             Escuela Superior de Medicina (ESM) - IPN
+                              Escuela Superior de Medicina (ESM) - IPN
                          </a>
                      </p>
                  </div>
@@ -471,7 +518,7 @@
         </div>
     </div>
 
-    <button type="button" id="reset-button" class="mt-4 py-2 px-4 border ipn-border rounded-lg shadow-sm text-sm font-medium ipn-accent bg-white hover:bg-red-50 transition duration-150 ease-in-out fixed top-8 right-8 hidden">
+    <button type="button" id="reset-button" class="mt-4 py-2 px-4 border ipn-border rounded-lg shadow-sm text-sm font-medium ipn-accent bg-white hover:bg-red-50 transition duration-150 ease-in-out fixed top-8 right-8 hidden no-print">
         &larr; Calcular Nuevo
     </button>
 
@@ -480,12 +527,12 @@
         // =======================================================
         // === CALCULADORA DE RIESGO INTEGRAL V2 - LOGIC.JS ====
         // =======================================================
-        
+       
         // --- CONFIGURACIÓN DE INTEGRACIÓN CON GOOGLE SHEETS (IMPORTANTE) ---
         // ¡ACTUALIZADO CON TU ÚLTIMA URL DE DESPLIEGUE!
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbweuEciVBAMuQgFMJe6HQrH4Q3v4aAKyhlZUr45lAIiZCseb095Hy8ljd2NDOvv42ODIw/exec";
         // --------------------------------------------------------------------
-        
+       
         // --- CONSTANTES GLOBALES Y PUNTOS DE CORTE (Basados en IMSS y Guías) ---
         const CONSTANTS = {
             // IMSS (1000167606.jpg)
@@ -576,9 +623,9 @@
             const validationDiv = document.getElementById('validation-message');
             validationDiv.classList.add('hidden');
             document.getElementById('sheet-status').classList.add('hidden');
-            
+           
             console.log("Iniciando cálculo y envío de datos v2...");
-            
+           
             // 1. Recolección y Cálculos de Edad
             const inputs = getUserInputs_v2();
             if (!inputs) {
@@ -595,13 +642,13 @@
 
             // 4. Cálculo del Score de Riesgo Heurístico (El "Cerebro")
             const riskProfile = calculateHeuristicScore_v2(inputs, metrics, healthStatus);
-            
+           
             // 5. Envío de Datos a Google Sheets (Asíncrono)
             await sendDataToSheets(inputs, metrics, riskProfile);
-            
+           
             // 6. Generación de Resultados en la UI
             generateResults_v2(inputs, metrics, riskProfile);
-            
+           
             // 7. Guardar resultados en variable global para 'copiar'
             window.lastResultData_v2 = { inputs, metrics, riskProfile };
 
@@ -622,7 +669,7 @@
             statusDiv.textContent = "Enviando datos a la base de datos (Google Sheets)...";
             statusDiv.className = "text-center p-3 mt-4 rounded-lg text-sm bg-blue-100 text-blue-800";
             statusDiv.classList.remove('hidden');
-            
+           
             // Consolidar todos los datos relevantes en un solo objeto para el POST
             const dataToSend = {
                 timestamp: new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
@@ -630,7 +677,7 @@
                 email: inputs.email || '',
                 gender: inputs.gender === 'male' ? 'Masculino' : 'Femenino',
                 age: inputs.age,
-                
+               
                 // Signos y Antropometría
                 paSistolica: inputs.pa_used.s,
                 paDiastolica: inputs.pa_used.d,
@@ -641,7 +688,7 @@
                 height_cm: inputs.height_cm,
                 waist: inputs.waist,
                 hip: inputs.hip,
-                
+               
                 // Métricas calculadas
                 bmi: metrics.bmi,
                 bmiClass: metrics.bmi_class,
@@ -676,13 +723,13 @@
                 medDlp: inputs.med_dlp,
                 historyMI: inputs.history_mi,
                 familyHistory: inputs.family_history,
-                
+               
                 // Resultados de Riesgo
                 riskScore: riskProfile.score,
                 riskLevel: riskProfile.level,
                 riskFactorsList: riskProfile.factors.map(f => f.text).join(' | '),
             };
-            
+           
             try {
                 // Usamos fetch con 'no-cors' para Apps Script POST
                 const response = await fetch(WEB_APP_URL, {
@@ -694,11 +741,11 @@
                     },
                     body: JSON.stringify(dataToSend)
                 });
-                
+               
                 // Asumimos éxito debido a 'no-cors'.
                 statusDiv.textContent = "✅ Datos guardados en Sheets con éxito.";
                 statusDiv.className = "text-center p-3 mt-4 rounded-lg text-sm bg-green-100 text-green-800";
-                
+               
             } catch (error) {
                 console.error("Error al enviar datos a Google Sheets. La aplicación local sigue funcionando.", error);
                 statusDiv.textContent = "❌ Error al guardar datos en Sheets. Revise la consola. El cálculo local se completó.";
@@ -711,7 +758,7 @@
          * PASO 1: Recolecta todos los datos del formulario HTML.
          */
         function getUserInputs_v2() {
-            
+           
             const getVal = (id) => document.getElementById(id)?.value || null;
             const getNum = (id) => parseFloat(document.getElementById(id)?.value) || null;
             const getRad = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value || "no";
@@ -785,7 +832,7 @@
             if (!inputs.age || inputs.age < 0 || !inputs.height_cm || !inputs.weight || !inputs.waist || !inputs.hip || !inputs.glucose || !inputs.total_chol || !inputs.hdl || !inputs.triglycerides || !inputs.pa_used) {
                 return null; // Faltan datos clave
             }
-            
+           
             return inputs;
         }
 
@@ -794,7 +841,7 @@
          */
         function getAverageBP(pas, pad) {
             const bp_readings = [];
-            
+           
             // Lectura principal (obligatoria)
             if (pas && pad) {
                 bp_readings.push({ s: pas, d: pad });
@@ -813,7 +860,7 @@
 
             const total_s = bp_readings.reduce((sum, reading) => sum + reading.s, 0);
             const total_d = bp_readings.reduce((sum, reading) => sum + reading.d, 0);
-            
+           
             return {
                 s: Math.round(total_s / bp_readings.length),
                 d: Math.round(total_d / bp_readings.length),
@@ -861,7 +908,7 @@
             const X = (0.953 * ln_tg) + (0.139 * metrics.bmi) + (0.718 * ln_waist) - 13.9;
             metrics.fli_score = parseFloat(((Math.exp(X) / (1 + Math.exp(X))) * 100).toFixed(1));
             metrics.fli_class = metrics.fli_score >= CONSTANTS.FLI_MASLD.ALTO ? "Alto Riesgo" : (metrics.fli_score >= CONSTANTS.FLI_MASLD.BAJO ? "Riesgo Moderado" : "Bajo Riesgo");
-            
+           
             return metrics;
         }
 
@@ -902,7 +949,7 @@
             } else if (inputs.med_hta === 'yes_freq') {
                 status.hta = "tratada_no_dx"; // Lógica solicitada
             }
-            
+           
             // Dislipidemia
             if (inputs.dlp_status === 'yes') {
                 status.dlp = "diagnosticada";
@@ -961,11 +1008,11 @@
             // D. Parámetros Bioquímicos (Dislipidemia)
             if (inputs.ldl) { // Solo si se proveyó LDL
                  if (inputs.ldl >= CONSTANTS.LDL.ALTO) {
-                    score += 20;
-                    riskFactors.push({ text: `Colesterol LDL Muy Alto (>${CONSTANTS.LDL.ALTO})`, class: "risk-high" });
+                     score += 20;
+                     riskFactors.push({ text: `Colesterol LDL Muy Alto (>${CONSTANTS.LDL.ALTO})`, class: "risk-high" });
                 } else if (inputs.ldl >= CONSTANTS.LDL.LIMITE) {
-                    score += 10;
-                    riskFactors.push({ text: `Colesterol LDL Límite (>${CONSTANTS.LDL.LIMITE})`, class: "risk-moderate" });
+                     score += 10;
+                     riskFactors.push({ text: `Colesterol LDL Límite (>${CONSTANTS.LDL.LIMITE})`, class: "risk-moderate" });
                 }
             }
 
@@ -1075,7 +1122,7 @@
             if ((!grip_right || grip_right === 0) && (!grip_left || grip_left === 0) || !age) return [currentScore, null];
 
             const maxGrip = Math.max(grip_right || 0, grip_left || 0);
-            
+           
             // 1. Obtener rango de edad de la tabla
             let ageRange;
             if (age <= 29) ageRange = "20-29";
@@ -1127,16 +1174,16 @@
             document.getElementById('res-tg-hdl-class').textContent = `(${metrics.tg_hdl_class})`;
             document.getElementById('res-chol-hdl-val').textContent = metrics.chol_hdl;
             document.getElementById('res-chol-hdl-class').textContent = `(${metrics.chol_hdl_class})`;
-            
+           
             document.getElementById('res-fli-val').textContent = metrics.fli_score;
             document.getElementById('res-fli-class').textContent = `(${metrics.fli_class})`;
 
             document.getElementById('res-ipa-val').textContent = metrics.ipa;
             document.getElementById('res-ipa-class').textContent = `(${metrics.ipa_class})`;
-            
+           
             const totalActivity = (inputs.activity_days * inputs.activity_duration) || 0;
             document.getElementById('res-activity-class').textContent = totalActivity >= 150 ? "Activo (Cumple meta)" : "Sedentario/Insuficiente";
-            
+           
             document.getElementById('res-grip-class').textContent = riskProfile.grip_factor_text;
 
 
@@ -1151,7 +1198,7 @@
                     if (factor.class === 'risk-high') colorClass = "text-red-600 font-bold";
                     if (factor.class === 'risk-moderate') colorClass = "text-yellow-700 font-semibold";
                     if (factor.class === 'risk-low') colorClass = "text-green-600";
-                    
+                   
                     factorsList.innerHTML += `<li class="${colorClass}">${factor.text}</li>`;
                 });
             }
@@ -1159,7 +1206,7 @@
             // 4. Llenar Recomendaciones (Personalizadas)
             const recList = document.getElementById('recommendations-list');
             recList.innerHTML = ""; // Limpiar lista
-            
+           
             // Recomendaciones basadas en los peores factores
             if (riskProfile.level === "MUY ALTO RIESGO" || riskProfile.level === "ALTO RIESGO") {
                  recList.innerHTML += `<li class="font-bold text-red-700">Atención Prioritaria: Su perfil indica un riesgo cardiovascular elevado. Es fundamental consultar a un médico especialista a la brevedad.</li>`;
@@ -1202,7 +1249,7 @@
         }
 
         /**
-         * Función de copiado (v2)
+         * Función de copiado (v2) - Se mantiene en el script, pero no se usa
          */
         function copyResults_v2() {
             if (!window.lastResultData_v2) {
@@ -1211,19 +1258,19 @@
                 document.getElementById('validation-message').classList.remove('hidden');
                 return;
             }
-            
+           
             const { inputs, metrics, riskProfile } = window.lastResultData_v2;
-            
+           
             // Generar texto plano
             let text = `--- PERFIL DE RIESGO CARDIOMETABÓLICO INTEGRAL ---\n`;
             text += `Nombre: ${inputs.full_name || 'No provisto'}\n`;
             text += `Edad: ${inputs.age} años\n`;
             text += `Fecha: ${new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })}\n\n`;
-            
+           
             text += `== RIESGO GLOBAL ==\n`;
             text += `NIVEL: ${riskProfile.level}\n`;
             text += `SCORE: ${riskProfile.score} puntos\n\n`;
-            
+           
             text += `== MÉTRICAS CLAVE ==\n`;
             text += `IMC: ${metrics.bmi} (${metrics.bmi_class})\n`;
             text += `Índice Cintura-Cadera (ICC): ${metrics.icc} (${metrics.icc_class})\n`;
@@ -1233,7 +1280,7 @@
             text += `Índice Tabáquico (IPA): ${metrics.ipa} (${metrics.ipa_class})\n`;
             text += `Fuerza de Agarre: ${riskProfile.grip_factor_text}\n`;
             text += `Presión Arterial Usada: ${inputs.pa_used.s}/${inputs.pa_used.d} mmHg (${inputs.pa_used.source})\n\n`;
-            
+           
             text += `== FACTORES DE RIESGO DETECTADOS ==\n`;
             if (riskProfile.factors.length > 0) {
                 riskProfile.factors.forEach(f => {
@@ -1242,15 +1289,15 @@
             } else {
                 text += `- Ningún factor de riesgo mayor detectado.\n`;
             }
-            
+           
             text += `\n== PLAN DE ACCIÓN RECOMENDADO ==\n`;
             const recListItems = document.getElementById('recommendations-list').children;
             Array.from(recListItems).forEach(item => {
                 text += `* ${item.textContent}\n`;
             });
-            
+           
             text += `\n**Nota Importante:** Esta herramienta no sustituye la evaluación médica profesional.`;
-            
+           
             // Copiar al portapapeles
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => {
@@ -1275,7 +1322,7 @@
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                
+               
                 // Reemplazando alert() con un mensaje de estado temporal
                 const statusDiv = document.getElementById('sheet-status');
                 statusDiv.textContent = "¡Resultados copiados al portapapeles! (modo fallback)";
@@ -1289,7 +1336,7 @@
         // --- Inicializador ---
         // Asegura que el DOM esté cargado antes de asignar los botones
         document.addEventListener('DOMContentLoaded', () => {
-            
+           
             // Asigna la función v2 (ahora async) al botón de cálculo
             const calcButton = document.getElementById('calculate-button');
             if (calcButton) {
@@ -1305,14 +1352,25 @@
                 resetButton.onclick = resetForm;
             }
 
-            // Asigna la función de copiado
+            // (MODIFICADO) Se comenta la función de copiado
+            /*
             const copyButton = document.getElementById('copy-button');
             if (copyButton) {
                 copyButton.onclick = copyResults_v2;
             }
+            */
+
+            // (NUEVO) Asigna la función de impresión al nuevo botón
+            const printButton = document.getElementById('print-button');
+            if (printButton) {
+                printButton.onclick = (e) => {
+                    e.preventDefault(); // Prevenir cualquier acción default del botón
+                    window.print();
+                };
+            }
         });
 
     </script>
-    
+   
 </body>
 </html>
