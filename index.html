@@ -563,6 +563,9 @@
         // === LÓGICA JAVASCRIPT DE LA CALCULADORA ================
         // =======================================================
         
+        // --- ESTADO GLOBAL ---
+        let TOS_ACCEPTED = false; // Variable para rastrear el consentimiento
+        
         // --- CONFIGURACIÓN DE INTEGRACIÓN CON GOOGLE SHEETS (IMPORTANTE) ---
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbweuEciVBAMuQgFMJe6HQrH4Q3v4aAKyhlZUr45lAIiZCseb095Hy8ljd2NDOvv42ODIw/exec";
         // --------------------------------------------------------------------
@@ -602,10 +605,12 @@
         // ====================================================================
 
         async function calculateRisk_v2() {
-            // Validación de la pantalla de bienvenida
-            if (!document.getElementById('welcome-screen').classList.contains('hidden')) {
-                document.getElementById('validation-message').textContent = "⚠️ Debe aceptar los Términos y Condiciones para continuar.";
-                document.getElementById('validation-message').classList.remove('hidden');
+            // Validación: Si el usuario no aceptó (o si forzó el botón), lo detenemos.
+            if (!TOS_ACCEPTED) {
+                const validationDiv = document.getElementById('validation-message');
+                validationDiv.textContent = "⚠️ ERROR: Debe aceptar los Términos y Condiciones para calcular.";
+                validationDiv.classList.remove('hidden');
+                document.getElementById('welcome-screen').style.display = 'flex';
                 return;
             }
 
@@ -961,13 +966,17 @@
         }
 
         function resetForm() {
-            // Oculta la pantalla de resultados y vuelve a mostrar la bienvenida
-            document.getElementById('welcome-screen').style.display = 'flex'; // Usamos style.display
+            // Vuelve a mostrar la pantalla de bienvenida y oculta los resultados
+            document.getElementById('welcome-screen').style.display = 'flex'; 
             document.getElementById('results-section').classList.add('hidden');
             document.getElementById('reset-button').classList.add('hidden');
             document.getElementById('sheet-status').classList.add('hidden');
             
-            // Limpia el formulario (que está visible pero detrás del welcome-screen)
+            // Reinicia el estado de aceptación
+            TOS_ACCEPTED = false; 
+            const termsCheckbox = document.getElementById('accept-terms');
+            if (termsCheckbox) termsCheckbox.checked = false;
+            
             document.getElementById('calc-form').reset();
             window.scrollTo(0, 0);
         }
@@ -979,10 +988,13 @@
         function acceptTerms() {
             const termsCheckbox = document.getElementById('accept-terms');
             if (termsCheckbox.checked) {
-                // CORRECCIÓN FINAL: Ocultar la pantalla de bienvenida usando style.display
+                // 1. Ocultar la pantalla de bienvenida
                 document.getElementById('welcome-screen').style.display = 'none';
                 
-                // Limpiamos el formulario para iniciar la calculadora
+                // 2. Establecer el estado global de aceptación
+                TOS_ACCEPTED = true;
+
+                // 3. Limpiar el formulario y reenfocar al inicio
                 document.getElementById('calc-form').reset(); 
                 window.scrollTo(0, 0);
             }
@@ -1004,6 +1016,7 @@
             const continueButton = document.getElementById('continue-button');
             
             if (termsCheckbox && continueButton) {
+                
                 // 1. Asigna el handler de clic al botón (llama a la función acceptTerms)
                 continueButton.onclick = acceptTerms; 
 
@@ -1017,12 +1030,8 @@
                     }
                 });
             }
-
-            // Al cargar, el welcome-screen ya está visible por el CSS, no necesitamos JS para mostrarlo.
-            // document.getElementById('main-content') ya no tiene la clase 'hidden' en el HTML.
         });
     </script>
 </body>
 </html>
-
 
