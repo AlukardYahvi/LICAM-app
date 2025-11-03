@@ -616,7 +616,7 @@
         // ====================================================================
 
         async function calculateRisk_v2() {
-            // Asegurarse de que el usuario aceptó los términos si por alguna razón salta la pantalla
+            // Validación de la pantalla de bienvenida
             if (!document.getElementById('welcome-screen').classList.contains('hidden')) {
                 document.getElementById('validation-message').textContent = "⚠️ Debe aceptar los Términos y Condiciones para continuar.";
                 document.getElementById('validation-message').classList.remove('hidden');
@@ -991,7 +991,7 @@
         function acceptTerms() {
             const termsCheckbox = document.getElementById('accept-terms');
             if (termsCheckbox.checked) {
-                // CORRECCIÓN: Ocultar welcome-screen y mostrar main-content
+                // CORRECCIÓN FINAL: Aseguramos la transición de visibilidad
                 document.getElementById('welcome-screen').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
                 document.getElementById('calc-form').reset(); 
@@ -1015,7 +1015,11 @@
             const continueButton = document.getElementById('continue-button');
             
             if (termsCheckbox && continueButton) {
-                // CORRECCIÓN: Usar la función acceptTerms como controlador directo
+                
+                // 1. Asigna el handler de clic al botón
+                continueButton.onclick = acceptTerms; 
+
+                // 2. Controla la visibilidad y el cursor del botón basado en el checkbox
                 termsCheckbox.addEventListener('change', () => {
                     continueButton.disabled = !termsCheckbox.checked;
                     if (termsCheckbox.checked) {
@@ -1024,15 +1028,13 @@
                         continueButton.classList.add('opacity-50', 'cursor-not-allowed');
                     }
                 });
-                
-                // Aseguramos que el botón llama a acceptTerms
-                continueButton.onclick = acceptTerms; 
             }
 
-            // Inicia la página en la pantalla de bienvenida
+            // 3. Oculta el contenido principal al cargar la página
             document.getElementById('main-content').classList.add('hidden');
         });
     </script>
 </body>
 </html>
+
 
