@@ -31,21 +31,6 @@
             transition: all 0.3s ease;
         }
 
-        /* Pantalla de Bienvenida / Bloqueo - NOTA: Siempre se muestra por defecto con CSS */
-        #welcome-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(241, 245, 249, 0.95); 
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(5px);
-        }
-
         /* ==== SECCIÓN CSS DE IMPRESIÓN ==== */
         @media print {
             .no-print { display: none !important; }
@@ -61,60 +46,6 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <div id="welcome-screen">
-        <div class="bg-white p-8 md:p-10 rounded-2xl shadow-2xl max-w-2xl w-full border-t-8 ipn-border transition duration-300">
-            <h2 class="text-3xl font-extrabold ipn-accent mb-4 border-b pb-2">
-                Aviso de Privacidad y Términos de Uso
-            </h2>
-            <div class="max-h-96 overflow-y-auto pr-4 text-gray-700 text-sm space-y-4">
-                <p class="font-bold text-base">Proyecto Tesis IPN-ESM: Calculadora de Riesgo Cardiometabólico</p>
-                <p>
-                    <span class="font-semibold">Responsable de la recolección de datos:</span> Edsel Yahvi Méndez Hernández (Estudiante de Tesis) y el Laboratorio de Investigación Integral Cardiometabólica (LICAM) de la Escuela Superior de Medicina (ESM) del Instituto Politécnico Nacional (IPN).
-                </p>
-                
-                <p class="font-semibold text-base ipn-accent">Finalidad del tratamiento de sus datos personales:</p>
-                <p>
-                    Los datos personales y de salud recabados a través de esta calculadora (incluyendo datos sensibles como edad, sexo biológico, glucosa, lípidos, y antecedentes de salud) serán utilizados única y exclusivamente para los siguientes fines primarios y estadísticos:
-                </p>
-                <ul class="list-disc list-inside ml-4 space-y-1">
-                    <li><strong>Validación y análisis estadístico</strong> de la "Calculadora de Riesgo Cardiometabólico Integral" como parte del proyecto de tesis del responsable.</li>
-                    <li>Generación de <strong>estadísticas anonimizadas</strong>, índices de riesgo poblacional y reportes científicos internos del LICAM/IPN.</li>
-                    <li>Publicación de resultados científicos a <strong>nivel agregado (nunca individualizado)</strong> en tesis, artículos o ponencias.</li>
-                </ul>
-                <p class="font-semibold mt-4">
-                    <span class="text-red-600">No utilizaremos</span> sus datos personales para fines secundarios, de marketing, publicidad o venta a terceros.
-                </p>
-
-                <p class="font-semibold text-base ipn-accent">Mecanismo para manifestar el consentimiento y el rechazo:</p>
-                <p>
-                    Al marcar la casilla "He leído y acepto..." que se presenta a continuación, usted otorga su <strong>consentimiento expreso</strong> para el tratamiento de los datos proporcionados con las finalidades descritas en este aviso.
-                </p>
-                <p>
-                    Usted podrá revocar su consentimiento o ejercer sus derechos ARCO (Acceso, Rectificación, Cancelación u Oposición) contactando al responsable en el correo electrónico proporcionado en la sección de información del proyecto.
-                </p>
-                
-                <p class="font-semibold text-base ipn-accent">Ubicación y Conservación:</p>
-                <p>
-                    Sus datos serán conservados de forma segura en bases de datos gestionadas por el IPN (a través de Google Sheets), con acceso restringido, y serán **anonimizados** una vez que el proyecto de tesis alcance su conclusión formal.
-                </p>
-            </div>
-            
-            <div class="mt-6 pt-4 border-t">
-                <div class="flex items-start space-x-3">
-                    <input type="checkbox" id="accept-terms" class="mt-1.5 h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
-                    <label for="accept-terms" class="text-base font-semibold text-gray-800 cursor-pointer">
-                        He leído y acepto los <span class="ipn-accent font-extrabold">Términos y Condiciones</span> y el 
-                        <span class="ipn-accent font-extrabold">Aviso de Privacidad Simplificado</span>.
-                    </label>
-                </div>
-                
-                <button id="continue-button" disabled class="w-full mt-5 py-3 px-6 rounded-xl text-lg font-bold text-white ipn-bg ipn-bg-dark shadow-glow opacity-50 cursor-not-allowed transition duration-300">
-                    Aceptar y Continuar a la Calculadora
-                </button>
-            </div>
-        </div>
-    </div>
-    
     <div id="main-content" class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-2xl border-t-8 ipn-border">
         <header class="text-center mb-8">
             <div class="flex justify-center items-center space-x-6 mb-4">
@@ -440,9 +371,29 @@
                     </div>
                 </div>
 
+                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pt-4 pb-2">9. Consentimiento de Datos</h2>
+                
+                <div class="p-4 border border-red-300 bg-red-50 rounded-xl mb-6 text-gray-700">
+                    <p class="font-bold text-base mb-2 ipn-accent">Aviso de Privacidad Simplificado</p>
+                    <p class="text-sm">
+                        Los datos proporcionados (incluyendo datos de salud sensibles) serán utilizados **única y exclusivamente** para la 
+                        **Validación y Análisis Estadístico** del proyecto de tesis del responsable (Edsel Yahvi Méndez H.) y el 
+                        **Laboratorio LICAM/IPN**.
+                    </p>
+                    <p class="text-sm mt-1">
+                        Los resultados serán publicados <strong>solo a nivel agregado y anonimizado</strong>. Sus datos no serán usados para fines de marketing ni compartidos con terceros. Al aceptar, otorga su consentimiento expreso.
+                    </p>
+                </div>
+
+                <div class="flex items-center space-x-3 mb-6">
+                    <input type="checkbox" id="accept-terms-final" class="h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                    <label for="accept-terms-final" class="text-base font-semibold text-gray-800 cursor-pointer">
+                        He leído y acepto el Aviso de Privacidad y el uso de mis datos para fines estadísticos.
+                    </label>
+                </div>
                 <div id="sheet-status" class="text-center p-3 mt-4 rounded-lg text-sm hidden"></div>
 
-                <button id="calculate-button" class="w-full mt-6 py-3 px-6 rounded-xl text-lg font-bold text-white ipn-bg ipn-bg-dark shadow-glow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out">
+                <button id="calculate-button" disabled class="w-full mt-2 py-3 px-6 rounded-xl text-lg font-bold text-white ipn-bg ipn-bg-dark shadow-glow opacity-50 cursor-not-allowed transition duration-150 ease-in-out">
                     Calcular Riesgo Cardiovascular Integral
                 </button>
             </div>
@@ -564,11 +515,11 @@
         // =======================================================
         
         // --- ESTADO GLOBAL ---
-        let TOS_ACCEPTED = false; // Variable para rastrear el consentimiento
+        // Eliminamos la validación de la pantalla de bienvenida de la función de cálculo.
+        // Ahora, el botón de cálculo está deshabilitado por el checkbox HTML.
         
         // --- CONFIGURACIÓN DE INTEGRACIÓN CON GOOGLE SHEETS (IMPORTANTE) ---
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbweuEciVBAMuQgFMJe6HQrH4Q3v4aAKyhlZUr45lAIiZCseb095Hy8ljd2NDOvv42ODIw/exec";
-        // --------------------------------------------------------------------
         
         // --- CONSTANTES GLOBALES Y PUNTOS DE CORTE (Basados en IMSS y Guías) ---
         const CONSTANTS = {
@@ -605,14 +556,7 @@
         // ====================================================================
 
         async function calculateRisk_v2() {
-            // Validación: Si el usuario no aceptó (o si forzó el botón), lo detenemos.
-            if (!TOS_ACCEPTED) {
-                const validationDiv = document.getElementById('validation-message');
-                validationDiv.textContent = "⚠️ ERROR: Debe aceptar los Términos y Condiciones para calcular.";
-                validationDiv.classList.remove('hidden');
-                document.getElementById('welcome-screen').style.display = 'flex';
-                return;
-            }
+            // Ya no validamos welcome-screen aquí, el botón ya está deshabilitado por el checkbox.
 
             const validationDiv = document.getElementById('validation-message');
             validationDiv.classList.add('hidden');
@@ -888,26 +832,6 @@
             };
         }
 
-        function checkDynamometry(inputs, currentScore) {
-            const { age, gender, grip_right, grip_left } = inputs;
-            if ((!grip_right || grip_right === 0) && (!grip_left || grip_left === 0) || !age) return [currentScore, null];
-
-            const maxGrip = Math.max(grip_right || 0, grip_left || 0);
-            let ageRange;
-            if (age <= 29) ageRange = "20-29"; else if (age <= 39) ageRange = "30-39"; else if (age <= 49) ageRange = "40-49";
-            else if (age <= 59) ageRange = "50-59"; else if (age <= 69) ageRange = "60-69"; else ageRange = "70-99";
-
-            const p10_cutoff = DYNAMOMETRY_P10[gender === 'male' ? 'hombres' : 'mujeres'][ageRange];
-
-            if (maxGrip < p10_cutoff) {
-                const factor = { text: `Baja Fuerza Muscular (Dinamometría < ${p10_cutoff} Kg)`, class: "risk-high" };
-                return [currentScore + 15, factor];
-            } else {
-                const factor = { text: `Fuerza Muscular Normal (Dinamometría > P10)`, class: "risk-low" };
-                return [currentScore, factor];
-            }
-        }
-
         function generateResults_v2(inputs, metrics, riskProfile) {
             const riskDiv = document.getElementById('global-risk-result');
             riskDiv.innerHTML = `${riskProfile.level} (Score: ${riskProfile.score})`;
@@ -966,67 +890,63 @@
         }
 
         function resetForm() {
-            // Vuelve a mostrar la pantalla de bienvenida y oculta los resultados
-            document.getElementById('welcome-screen').style.display = 'flex'; 
+            // Elimina la necesidad de la pantalla de bienvenida, solo resetea el formulario
+            document.getElementById('welcome-screen').style.display = 'none'; // Aseguramos que se oculta
+            document.getElementById('input-form').classList.remove('hidden'); // Muestra el formulario
             document.getElementById('results-section').classList.add('hidden');
             document.getElementById('reset-button').classList.add('hidden');
             document.getElementById('sheet-status').classList.add('hidden');
             
             // Reinicia el estado de aceptación
-            TOS_ACCEPTED = false; 
-            const termsCheckbox = document.getElementById('accept-terms');
+            const termsCheckbox = document.getElementById('accept-terms-final');
             if (termsCheckbox) termsCheckbox.checked = false;
             
+            // Fuerza el botón de cálculo a estar deshabilitado al resetear
+            const calcButton = document.getElementById('calculate-button');
+             if (calcButton) {
+                calcButton.disabled = true;
+                calcButton.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+
             document.getElementById('calc-form').reset();
             window.scrollTo(0, 0);
         }
         
         // ====================================================================
-        // === FUNCIONES DE PANTALLA DE BIENVENIDA (CORREGIDAS) =================
+        // === Inicializador y Event Listeners del Checkbox =====================
         // ====================================================================
-
-        function acceptTerms() {
-            const termsCheckbox = document.getElementById('accept-terms');
-            if (termsCheckbox.checked) {
-                // 1. Ocultar la pantalla de bienvenida
-                document.getElementById('welcome-screen').style.display = 'none';
-                
-                // 2. Establecer el estado global de aceptación
-                TOS_ACCEPTED = true;
-
-                // 3. Limpiar el formulario y reenfocar al inicio
-                document.getElementById('calc-form').reset(); 
-                window.scrollTo(0, 0);
-            }
-        }
         
-        // --- Inicializador ---
         document.addEventListener('DOMContentLoaded', () => {
             const calcButton = document.getElementById('calculate-button');
-            if (calcButton) { calcButton.onclick = async (e) => { e.preventDefault(); await calculateRisk_v2(); }; }
-
             const resetButton = document.getElementById('reset-button');
-            if (resetButton) { resetButton.onclick = resetForm; }
-
             const printButton = document.getElementById('print-button');
+            const termsCheckbox = document.getElementById('accept-terms-final'); // Usamos el checkbox del final del formulario
+
+            // 1. Ocultar la pantalla de bienvenida e iniciar directamente el formulario
+            const welcomeScreen = document.getElementById('welcome-screen');
+            if (welcomeScreen) {
+                welcomeScreen.style.display = 'none';
+            }
+            
+            // 2. Asignar las funciones de botones
+            if (calcButton) { calcButton.onclick = async (e) => { e.preventDefault(); await calculateRisk_v2(); }; }
+            if (resetButton) { resetButton.onclick = resetForm; }
             if (printButton) { printButton.onclick = (e) => { e.preventDefault(); window.print(); }; }
             
-            // Lógica de habilitación/deshabilitación del botón de Continuar
-            const termsCheckbox = document.getElementById('accept-terms');
-            const continueButton = document.getElementById('continue-button');
-            
-            if (termsCheckbox && continueButton) {
+            // 3. Lógica de habilitación/deshabilitación del botón de Cálculo (por el checkbox al final del formulario)
+            if (termsCheckbox && calcButton) {
                 
-                // 1. Asigna el handler de clic al botón (llama a la función acceptTerms)
-                continueButton.onclick = acceptTerms; 
+                // Inicialmente deshabilitado
+                calcButton.disabled = true;
 
-                // 2. Controla la visibilidad y el cursor del botón basado en el checkbox
                 termsCheckbox.addEventListener('change', () => {
-                    continueButton.disabled = !termsCheckbox.checked;
-                    if (termsCheckbox.checked) {
-                        continueButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                    const isChecked = termsCheckbox.checked;
+                    calcButton.disabled = !isChecked;
+                    
+                    if (isChecked) {
+                        calcButton.classList.remove('opacity-50', 'cursor-not-allowed');
                     } else {
-                        continueButton.classList.add('opacity-50', 'cursor-not-allowed');
+                        calcButton.classList.add('opacity-50', 'cursor-not-allowed');
                     }
                 });
             }
@@ -1034,4 +954,3 @@
     </script>
 </body>
 </html>
-
