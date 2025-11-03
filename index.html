@@ -122,7 +122,7 @@
                     </label>
                 </div>
                 
-                <button onclick="acceptTerms()" id="continue-button" disabled class="w-full mt-5 py-3 px-6 rounded-xl text-lg font-bold text-white ipn-bg ipn-bg-dark shadow-glow opacity-50 cursor-not-allowed transition duration-300">
+                <button id="continue-button" disabled class="w-full mt-5 py-3 px-6 rounded-xl text-lg font-bold text-white ipn-bg ipn-bg-dark shadow-glow opacity-50 cursor-not-allowed transition duration-300">
                     Aceptar y Continuar a la Calculadora
                 </button>
             </div>
@@ -644,7 +644,7 @@
             
             window.lastResultData_v2 = { inputs, metrics, riskProfile };
 
-            document.getElementById('main-content').classList.add('hidden'); 
+            document.getElementById('input-form').classList.add('hidden'); 
             document.getElementById('results-section').classList.remove('hidden');
             document.getElementById('reset-button').classList.remove('hidden');
             window.scrollTo(0, 0);
@@ -985,14 +985,17 @@
         }
         
         // ====================================================================
-        // === NUEVAS FUNCIONES PARA PANTALLA DE BIENVENIDA =====================
+        // === FUNCIONES DE PANTALLA DE BIENVENIDA (CORREGIDAS) =================
         // ====================================================================
 
         function acceptTerms() {
-            if (document.getElementById('accept-terms').checked) {
+            const termsCheckbox = document.getElementById('accept-terms');
+            if (termsCheckbox.checked) {
+                // CORRECCIÓN: Ocultar welcome-screen y mostrar main-content
                 document.getElementById('welcome-screen').classList.add('hidden');
                 document.getElementById('main-content').classList.remove('hidden');
                 document.getElementById('calc-form').reset(); 
+                window.scrollTo(0, 0);
             }
         }
         
@@ -1012,6 +1015,7 @@
             const continueButton = document.getElementById('continue-button');
             
             if (termsCheckbox && continueButton) {
+                // CORRECCIÓN: Usar la función acceptTerms como controlador directo
                 termsCheckbox.addEventListener('change', () => {
                     continueButton.disabled = !termsCheckbox.checked;
                     if (termsCheckbox.checked) {
@@ -1021,10 +1025,11 @@
                     }
                 });
                 
-                continueButton.onclick = acceptTerms;
+                // Aseguramos que el botón llama a acceptTerms
+                continueButton.onclick = acceptTerms; 
             }
 
-            // Inicia en la pantalla de bienvenida
+            // Inicia la página en la pantalla de bienvenida
             document.getElementById('main-content').classList.add('hidden');
         });
     </script>
