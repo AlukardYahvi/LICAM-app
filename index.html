@@ -31,7 +31,7 @@
             transition: all 0.3s ease;
         }
 
-        /* Pantalla de Bienvenida / Bloqueo */
+        /* Pantalla de Bienvenida / Bloqueo - NOTA: Siempre se muestra por defecto con CSS */
         #welcome-screen {
             position: fixed;
             top: 0;
@@ -48,29 +48,15 @@
 
         /* ==== SECCIÓN CSS DE IMPRESIÓN ==== */
         @media print {
-            .no-print {
-                display: none !important;
-            }
-            body {
-                padding: 0;
-                margin: 0;
-                background-color: #ffffff;
-            }
-            .max-w-6xl {
-                max-width: 100% !important;
-                box-shadow: none !important;
-                border: none !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-            /* Fuerzamos colores de acento para impresión monocromática */
+            .no-print { display: none !important; }
+            body { padding: 0; margin: 0; background-color: #ffffff; }
+            .max-w-6xl { max-width: 100% !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
             .ipn-accent, .ipn-border, .ipn-bg, .risk-low, .risk-moderate, .risk-high, .risk-very-high {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 background-color: inherit; 
             }
         }
-        /* ==== FIN DE SECCIÓN DE IMPRESIÓN ==== */
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -129,7 +115,7 @@
         </div>
     </div>
     
-    <div id="main-content" class="hidden max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-2xl border-t-8 ipn-border">
+    <div id="main-content" class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-2xl border-t-8 ipn-border">
         <header class="text-center mb-8">
             <div class="flex justify-center items-center space-x-6 mb-4">
                 <a href="https://www.esm.ipn.mx/" target="_blank" title="Escuela Superior de Medicina - IPN">
@@ -612,7 +598,7 @@
         };
 
         // ====================================================================
-        // === FUNCIONES DE LÓGICA PRINCIPAL (CALCULATE, GET INPUTS, METRICS) ===
+        // === FUNCIONES DE LÓGICA DE CÁLCULO ==================================
         // ====================================================================
 
         async function calculateRisk_v2() {
@@ -975,11 +961,13 @@
         }
 
         function resetForm() {
-            document.getElementById('welcome-screen').classList.remove('hidden'); 
-            document.getElementById('main-content').classList.add('hidden');
+            // Oculta la pantalla de resultados y vuelve a mostrar la bienvenida
+            document.getElementById('welcome-screen').style.display = 'flex'; // Usamos style.display
             document.getElementById('results-section').classList.add('hidden');
             document.getElementById('reset-button').classList.add('hidden');
             document.getElementById('sheet-status').classList.add('hidden');
+            
+            // Limpia el formulario (que está visible pero detrás del welcome-screen)
             document.getElementById('calc-form').reset();
             window.scrollTo(0, 0);
         }
@@ -991,9 +979,10 @@
         function acceptTerms() {
             const termsCheckbox = document.getElementById('accept-terms');
             if (termsCheckbox.checked) {
-                // CORRECCIÓN FINAL: Aseguramos la transición de visibilidad
-                document.getElementById('welcome-screen').classList.add('hidden');
-                document.getElementById('main-content').classList.remove('hidden');
+                // CORRECCIÓN FINAL: Ocultar la pantalla de bienvenida usando style.display
+                document.getElementById('welcome-screen').style.display = 'none';
+                
+                // Limpiamos el formulario para iniciar la calculadora
                 document.getElementById('calc-form').reset(); 
                 window.scrollTo(0, 0);
             }
@@ -1015,8 +1004,7 @@
             const continueButton = document.getElementById('continue-button');
             
             if (termsCheckbox && continueButton) {
-                
-                // 1. Asigna el handler de clic al botón
+                // 1. Asigna el handler de clic al botón (llama a la función acceptTerms)
                 continueButton.onclick = acceptTerms; 
 
                 // 2. Controla la visibilidad y el cursor del botón basado en el checkbox
@@ -1030,8 +1018,8 @@
                 });
             }
 
-            // 3. Oculta el contenido principal al cargar la página
-            document.getElementById('main-content').classList.add('hidden');
+            // Al cargar, el welcome-screen ya está visible por el CSS, no necesitamos JS para mostrarlo.
+            // document.getElementById('main-content') ya no tiene la clase 'hidden' en el HTML.
         });
     </script>
 </body>
