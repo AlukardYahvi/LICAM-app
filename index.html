@@ -18,13 +18,25 @@
         .risk-very-high { background-color: #eeb8b8; color: #570a0a; border-color: #c95d5d; } /* Color para Muy Alto Riesgo */
 
         /* IPN/ESM Accent */
-        .ipn-accent { color: #b91c1c; } 
+        .ipn-accent { color: #b91c1c; } /* Rojo Guinda */
         .ipn-border { border-color: #b91c1c; }
         .ipn-bg { background-color: #b91c1c; }
         .shadow-glow {
             box-shadow: 0 0 15px rgba(185, 28, 28, 0.3);
         }
         
+        /* Estilo para el contenedor principal de la página */
+        .main-container {
+            max-width: 1200px; /* Incrementado para mejor presentación del contenido */
+            margin-left: auto;
+            margin-right: auto;
+            background-color: #ffffff;
+            padding: 2.5rem; /* p-10 */
+            border-radius: 1rem; /* rounded-xl */
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-2xl */
+            border-top: 8px solid #b91c1c; /* border-t-8 ipn-border */
+        }
+
         /* ==== (NUEVO) SECCIÓN CSS DE IMPRESIÓN ==== */
         @media print {
             /* Oculta todo lo que tenga la clase 'no-print' */
@@ -40,7 +52,7 @@
             }
             
             /* Ajusta el contenedor principal para impresión */
-            .max-w-6xl {
+            .main-container {
                 max-width: 100% !important;
                 box-shadow: none !important;
                 border: none !important;
@@ -53,21 +65,11 @@
                 display: block !important;
             }
             
-            /* Ajusta el grid para que se vea bien en una hoja A4 */
-            #results-section .grid {
-                display: block !important;
-            }
-            
             /* Asegura que los colores de riesgo se impriman */
             .risk-low, .risk-moderate, .risk-high, .risk-very-high {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 background-color: inherit;
-            }
-            
-            /* Opcional: Oculta logos de placeholder si no cargan */
-            img[src^="https://placehold.co"] {
-                display: none;
             }
         }
         /* ==== FIN DE SECCIÓN DE IMPRESIÓN ==== */
@@ -75,32 +77,39 @@
 </head>
 <body class="p-4 md:p-8">
 
-    <div class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-2xl border-t-8 ipn-border">
-        <header class="text-center mb-8">
-            <div class="flex justify-center items-center space-x-6 mb-4">
-                <a href="https://www.esm.ipn.mx/" target="_blank" title="Escuela Superior de Medicina - IPN">
-                    <img src="https://placehold.co/80x80/b91c1c/ffffff?text=ESM" alt="Logo ESM" class="h-16 w-16 object-contain rounded-full shadow-md">
-                </a>
-                <a href="https://www.ipn.mx/" target="_blank" title="Instituto Politécnico Nacional">
-                    <img src="https://placehold.co/100x100/7c0000/ffffff?text=IPN" alt="Logo IPN" class="h-20 w-20 object-contain shadow-lg">
-                </a>
-                <a href="cemiztli.wixsite.com/cardiometabolismo" target="_blank" title="Laboratorio LICAM">
-                    <img src="https://placehold.co/80x80/374151/ffffff?text=LICAM" alt="Logo LICAM" class="h-16 w-16 object-contain rounded-full shadow-md">
-                </a>
+    <div class="main-container">
+        <header class="mb-10 border-b pb-4">
+            <div class="grid grid-cols-3 items-center justify-between">
+                <div class="flex justify-start">
+                    <a href="https://www.esm.ipn.mx/" target="_blank" title="Escuela Superior de Medicina - IPN">
+                        <img src="logo_esm.png" alt="Logo ESM" class="h-16 w-16 md:h-20 md:w-20 object-contain shadow-md">
+                    </a>
+                </div>
+
+                <div class="text-center col-span-1">
+                    <h1 class="text-2xl md:text-3xl font-extrabold ipn-accent leading-tight">
+                        Calculadora de Riesgo Cardiometabólico
+                    </h1>
+                    <p class="text-sm md:text-md text-gray-700 mt-1 no-print">
+                        Proyecto de Tesis - Ingeniería en Biotecnología
+                    </p>
+                </div>
+
+                <div class="flex justify-end items-center space-x-4">
+                    <a href="https://www.ipn.mx/" target="_blank" title="Instituto Politécnico Nacional">
+                        <img src="logo_ipn.png" alt="Logo IPN" class="h-16 w-16 md:h-20 md:w-20 object-contain shadow-lg">
+                    </a>
+                    <a href="cemiztli.wixsite.com/cardiometabolismo" target="_blank" title="Laboratorio LICAM" class="hidden sm:block">
+                        <img src="logo_licam.png" alt="Logo LICAM" class="h-12 w-12 md:h-16 md:w-16 object-contain rounded-full shadow-md">
+                    </a>
+                </div>
             </div>
-           
-            <h1 class="text-3xl md:text-4xl font-bold ipn-accent">
-                Calculadora de Riesgo Cardiometabólico Integral
-            </h1>
-            <p class="text-lg text-gray-700 mt-2 no-print">
-                Proyecto de Tesis - Ingeniería en Biotecnología
-            </p>
         </header>
 
         <form id="calc-form" class="no-print">
             <div id="validation-message" class="hidden p-3 mb-4 rounded-lg bg-red-100 text-red-700 font-semibold"></div>
             <div id="input-form">
-               
+                
                 <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">1. Datos Personales</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div>
@@ -319,7 +328,7 @@
                         </select>
                     </div>
                 </div>
-               
+                
                 <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">7. Diagnósticos y Tratamiento</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
                     <div class="p-3 border rounded-md bg-gray-50">
@@ -416,7 +425,7 @@
                 <div class="p-6 rounded-xl border-2 space-y-4">
                     <h3 class="text-xl font-semibold mb-3 ipn-accent">Perfil de Riesgo</h3>
                     <div id="global-risk-result" class="text-center p-4 rounded-lg font-bold text-2xl mb-4 transition duration-300"></div>
-                   
+                    
                     <div>
                         <h4 class="font-semibold text-gray-700">Métricas Antropométricas:</h4>
                         <ul class="list-disc list-inside text-sm text-gray-600">
@@ -504,18 +513,18 @@
                      <p class="text-gray-600 mt-2">
                          <span class="font-medium">Sitio Web/Redes:</span> 
                          <a href="cemiztli.wixsite.com/cardiometabolismo" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
-                             cemiztli.wixsite.com/cardiometabolismo
+                              cemiztli.wixsite.com/cardiometabolismo
                          </a>,
                          <a href="https://www.facebook.com/licam.ipn" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
-                             Facebook
+                              Facebook
                          </a>,
                          <a href="https://www.instagram.com/ipn_licam_lab" target="_blank" class="text-pink-600 hover:text-pink-800 font-semibold underline">
-                             Instagram
+                              Instagram
                          </a>
                      </p>
                  </div>
              </div>
-        </div>
+         </div>
     </div>
 
     <button type="button" id="reset-button" class="mt-4 py-2 px-4 border ipn-border rounded-lg shadow-sm text-sm font-medium ipn-accent bg-white hover:bg-red-50 transition duration-150 ease-in-out fixed top-8 right-8 hidden no-print">
@@ -527,12 +536,12 @@
         // =======================================================
         // === CALCULADORA DE RIESGO INTEGRAL V2 - LOGIC.JS ====
         // =======================================================
-       
+        
         // --- CONFIGURACIÓN DE INTEGRACIÓN CON GOOGLE SHEETS (IMPORTANTE) ---
         // ¡ACTUALIZADO CON TU ÚLTIMA URL DE DESPLIEGUE!
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbweuEciVBAMuQgFMJe6HQrH4Q3v4aAKyhlZUr45lAIiZCseb095Hy8ljd2NDOvv42ODIw/exec";
         // --------------------------------------------------------------------
-       
+        
         // --- CONSTANTES GLOBALES Y PUNTOS DE CORTE (Basados en IMSS y Guías) ---
         const CONSTANTS = {
             // IMSS (1000167606.jpg)
@@ -623,9 +632,9 @@
             const validationDiv = document.getElementById('validation-message');
             validationDiv.classList.add('hidden');
             document.getElementById('sheet-status').classList.add('hidden');
-           
+            
             console.log("Iniciando cálculo y envío de datos v2...");
-           
+            
             // 1. Recolección y Cálculos de Edad
             const inputs = getUserInputs_v2();
             if (!inputs) {
@@ -642,13 +651,13 @@
 
             // 4. Cálculo del Score de Riesgo Heurístico (El "Cerebro")
             const riskProfile = calculateHeuristicScore_v2(inputs, metrics, healthStatus);
-           
+            
             // 5. Envío de Datos a Google Sheets (Asíncrono)
             await sendDataToSheets(inputs, metrics, riskProfile);
-           
+            
             // 6. Generación de Resultados en la UI
             generateResults_v2(inputs, metrics, riskProfile);
-           
+            
             // 7. Guardar resultados en variable global para 'copiar'
             window.lastResultData_v2 = { inputs, metrics, riskProfile };
 
@@ -669,7 +678,7 @@
             statusDiv.textContent = "Enviando datos a la base de datos (Google Sheets)...";
             statusDiv.className = "text-center p-3 mt-4 rounded-lg text-sm bg-blue-100 text-blue-800";
             statusDiv.classList.remove('hidden');
-           
+            
             // Consolidar todos los datos relevantes en un solo objeto para el POST
             const dataToSend = {
                 timestamp: new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
@@ -677,7 +686,7 @@
                 email: inputs.email || '',
                 gender: inputs.gender === 'male' ? 'Masculino' : 'Femenino',
                 age: inputs.age,
-               
+                
                 // Signos y Antropometría
                 paSistolica: inputs.pa_used.s,
                 paDiastolica: inputs.pa_used.d,
@@ -688,7 +697,7 @@
                 height_cm: inputs.height_cm,
                 waist: inputs.waist,
                 hip: inputs.hip,
-               
+                
                 // Métricas calculadas
                 bmi: metrics.bmi,
                 bmiClass: metrics.bmi_class,
@@ -723,13 +732,13 @@
                 medDlp: inputs.med_dlp,
                 historyMI: inputs.history_mi,
                 familyHistory: inputs.family_history,
-               
+                
                 // Resultados de Riesgo
                 riskScore: riskProfile.score,
                 riskLevel: riskProfile.level,
                 riskFactorsList: riskProfile.factors.map(f => f.text).join(' | '),
             };
-           
+            
             try {
                 // Usamos fetch con 'no-cors' para Apps Script POST
                 const response = await fetch(WEB_APP_URL, {
@@ -741,11 +750,11 @@
                     },
                     body: JSON.stringify(dataToSend)
                 });
-               
+                
                 // Asumimos éxito debido a 'no-cors'.
                 statusDiv.textContent = "✅ Datos guardados en Sheets con éxito.";
                 statusDiv.className = "text-center p-3 mt-4 rounded-lg text-sm bg-green-100 text-green-800";
-               
+                
             } catch (error) {
                 console.error("Error al enviar datos a Google Sheets. La aplicación local sigue funcionando.", error);
                 statusDiv.textContent = "❌ Error al guardar datos en Sheets. Revise la consola. El cálculo local se completó.";
@@ -758,7 +767,7 @@
          * PASO 1: Recolecta todos los datos del formulario HTML.
          */
         function getUserInputs_v2() {
-           
+            
             const getVal = (id) => document.getElementById(id)?.value || null;
             const getNum = (id) => parseFloat(document.getElementById(id)?.value) || null;
             const getRad = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value || "no";
@@ -832,7 +841,7 @@
             if (!inputs.age || inputs.age < 0 || !inputs.height_cm || !inputs.weight || !inputs.waist || !inputs.hip || !inputs.glucose || !inputs.total_chol || !inputs.hdl || !inputs.triglycerides || !inputs.pa_used) {
                 return null; // Faltan datos clave
             }
-           
+            
             return inputs;
         }
 
@@ -841,7 +850,7 @@
          */
         function getAverageBP(pas, pad) {
             const bp_readings = [];
-           
+            
             // Lectura principal (obligatoria)
             if (pas && pad) {
                 bp_readings.push({ s: pas, d: pad });
@@ -860,7 +869,7 @@
 
             const total_s = bp_readings.reduce((sum, reading) => sum + reading.s, 0);
             const total_d = bp_readings.reduce((sum, reading) => sum + reading.d, 0);
-           
+            
             return {
                 s: Math.round(total_s / bp_readings.length),
                 d: Math.round(total_d / bp_readings.length),
@@ -908,7 +917,7 @@
             const X = (0.953 * ln_tg) + (0.139 * metrics.bmi) + (0.718 * ln_waist) - 13.9;
             metrics.fli_score = parseFloat(((Math.exp(X) / (1 + Math.exp(X))) * 100).toFixed(1));
             metrics.fli_class = metrics.fli_score >= CONSTANTS.FLI_MASLD.ALTO ? "Alto Riesgo" : (metrics.fli_score >= CONSTANTS.FLI_MASLD.BAJO ? "Riesgo Moderado" : "Bajo Riesgo");
-           
+            
             return metrics;
         }
 
@@ -949,7 +958,7 @@
             } else if (inputs.med_hta === 'yes_freq') {
                 status.hta = "tratada_no_dx"; // Lógica solicitada
             }
-           
+            
             // Dislipidemia
             if (inputs.dlp_status === 'yes') {
                 status.dlp = "diagnosticada";
@@ -978,7 +987,7 @@
             // B. Historial Cardiovascular (Máxima Ponderación)
             if (inputs.history_mi === 'yes') {
                 score += 50; // Evento previo es el predictor más fuerte
-                riskFactors.push({ text: "Infarto Previo Diagnosticado", class: "risk-high" });
+                riskFactors.push({ text: "Infarto Previo Diagnosticado", class: "risk-very-high" });
             }
             if (inputs.history_angina === 'yes') {
                 score += 30; // Síntomas de angina
@@ -1122,7 +1131,7 @@
             if ((!grip_right || grip_right === 0) && (!grip_left || grip_left === 0) || !age) return [currentScore, null];
 
             const maxGrip = Math.max(grip_right || 0, grip_left || 0);
-           
+            
             // 1. Obtener rango de edad de la tabla
             let ageRange;
             if (age <= 29) ageRange = "20-29";
@@ -1174,16 +1183,16 @@
             document.getElementById('res-tg-hdl-class').textContent = `(${metrics.tg_hdl_class})`;
             document.getElementById('res-chol-hdl-val').textContent = metrics.chol_hdl;
             document.getElementById('res-chol-hdl-class').textContent = `(${metrics.chol_hdl_class})`;
-           
+            
             document.getElementById('res-fli-val').textContent = metrics.fli_score;
             document.getElementById('res-fli-class').textContent = `(${metrics.fli_class})`;
 
             document.getElementById('res-ipa-val').textContent = metrics.ipa;
             document.getElementById('res-ipa-class').textContent = `(${metrics.ipa_class})`;
-           
+            
             const totalActivity = (inputs.activity_days * inputs.activity_duration) || 0;
             document.getElementById('res-activity-class').textContent = totalActivity >= 150 ? "Activo (Cumple meta)" : "Sedentario/Insuficiente";
-           
+            
             document.getElementById('res-grip-class').textContent = riskProfile.grip_factor_text;
 
 
@@ -1195,10 +1204,10 @@
             } else {
                 riskProfile.factors.forEach(factor => {
                     let colorClass = "text-gray-700";
-                    if (factor.class === 'risk-high') colorClass = "text-red-600 font-bold";
+                    if (factor.class === 'risk-very-high' || factor.class === 'risk-high') colorClass = "text-red-600 font-bold";
                     if (factor.class === 'risk-moderate') colorClass = "text-yellow-700 font-semibold";
                     if (factor.class === 'risk-low') colorClass = "text-green-600";
-                   
+                    
                     factorsList.innerHTML += `<li class="${colorClass}">${factor.text}</li>`;
                 });
             }
@@ -1206,7 +1215,7 @@
             // 4. Llenar Recomendaciones (Personalizadas)
             const recList = document.getElementById('recommendations-list');
             recList.innerHTML = ""; // Limpiar lista
-           
+            
             // Recomendaciones basadas en los peores factores
             if (riskProfile.level === "MUY ALTO RIESGO" || riskProfile.level === "ALTO RIESGO") {
                  recList.innerHTML += `<li class="font-bold text-red-700">Atención Prioritaria: Su perfil indica un riesgo cardiovascular elevado. Es fundamental consultar a un médico especialista a la brevedad.</li>`;
@@ -1258,19 +1267,19 @@
                 document.getElementById('validation-message').classList.remove('hidden');
                 return;
             }
-           
+            
             const { inputs, metrics, riskProfile } = window.lastResultData_v2;
-           
+            
             // Generar texto plano
             let text = `--- PERFIL DE RIESGO CARDIOMETABÓLICO INTEGRAL ---\n`;
             text += `Nombre: ${inputs.full_name || 'No provisto'}\n`;
             text += `Edad: ${inputs.age} años\n`;
             text += `Fecha: ${new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' })}\n\n`;
-           
+            
             text += `== RIESGO GLOBAL ==\n`;
             text += `NIVEL: ${riskProfile.level}\n`;
             text += `SCORE: ${riskProfile.score} puntos\n\n`;
-           
+            
             text += `== MÉTRICAS CLAVE ==\n`;
             text += `IMC: ${metrics.bmi} (${metrics.bmi_class})\n`;
             text += `Índice Cintura-Cadera (ICC): ${metrics.icc} (${metrics.icc_class})\n`;
@@ -1280,7 +1289,7 @@
             text += `Índice Tabáquico (IPA): ${metrics.ipa} (${metrics.ipa_class})\n`;
             text += `Fuerza de Agarre: ${riskProfile.grip_factor_text}\n`;
             text += `Presión Arterial Usada: ${inputs.pa_used.s}/${inputs.pa_used.d} mmHg (${inputs.pa_used.source})\n\n`;
-           
+            
             text += `== FACTORES DE RIESGO DETECTADOS ==\n`;
             if (riskProfile.factors.length > 0) {
                 riskProfile.factors.forEach(f => {
@@ -1289,15 +1298,15 @@
             } else {
                 text += `- Ningún factor de riesgo mayor detectado.\n`;
             }
-           
+            
             text += `\n== PLAN DE ACCIÓN RECOMENDADO ==\n`;
             const recListItems = document.getElementById('recommendations-list').children;
             Array.from(recListItems).forEach(item => {
                 text += `* ${item.textContent}\n`;
             });
-           
+            
             text += `\n**Nota Importante:** Esta herramienta no sustituye la evaluación médica profesional.`;
-           
+            
             // Copiar al portapapeles
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(text).then(() => {
@@ -1322,7 +1331,7 @@
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-               
+                
                 // Reemplazando alert() con un mensaje de estado temporal
                 const statusDiv = document.getElementById('sheet-status');
                 statusDiv.textContent = "¡Resultados copiados al portapapeles! (modo fallback)";
@@ -1336,7 +1345,7 @@
         // --- Inicializador ---
         // Asegura que el DOM esté cargado antes de asignar los botones
         document.addEventListener('DOMContentLoaded', () => {
-           
+            
             // Asigna la función v2 (ahora async) al botón de cálculo
             const calcButton = document.getElementById('calculate-button');
             if (calcButton) {
@@ -1371,6 +1380,6 @@
         });
 
     </script>
-   
+    
 </body>
 </html>
