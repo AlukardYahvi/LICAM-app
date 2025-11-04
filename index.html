@@ -371,34 +371,10 @@
                         </select>
                     </div>
                 </div>
-
-                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pt-4 pb-2">9. Consentimiento de Datos</h2>
                 
-                <div class="p-4 border border-red-300 bg-red-50 rounded-xl mb-6 text-gray-700">
-                    <p class="font-bold text-base mb-2 ipn-accent">Aviso de Privacidad Simplificado</p>
-                    <p class="text-sm">
-                        Los datos proporcionados (incluyendo datos de salud sensibles) serán utilizados 
-                        <strong>única y exclusivamente</strong> para la 
-                        <strong>Validación y Análisis Estadístico</strong> del proyecto de tesis del responsable 
-                        (<strong>Edsel Yahvi Méndez H.</strong>) y el 
-                        <strong>Laboratorio LICAM/IPN</strong>.
-                    </p>
-                    <p class="text-sm mt-1">
-                        Los resultados serán publicados <strong>solo a nivel agregado y anonimizado</strong>. 
-                        Sus datos no serán usados para fines de marketing ni compartidos con terceros. 
-                        Al aceptar, otorga su consentimiento expreso.
-                    </p>
-                </div>
-
-                <div class="flex items-center space-x-3 mb-6">
-                    <input type="checkbox" id="accept-terms-final" class="h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
-                    <label for="accept-terms-final" class="text-base font-semibold text-gray-800 cursor-pointer">
-                        He leído y acepto el Aviso de Privacidad y el uso de mis datos para fines estadísticos.
-                    </label>
-                </div>
                 <div id="sheet-status" class="text-center p-3 mt-4 rounded-lg text-sm hidden"></div>
 
-                <button id="calculate-button" disabled class="w-full mt-2 py-3 px-6 rounded-xl text-lg font-bold text-white ipn-bg ipn-bg-dark shadow-glow opacity-50 cursor-not-allowed transition duration-150 ease-in-out">
+                <button id="calculate-button" class="w-full mt-6 py-3 px-6 rounded-xl text-lg font-bold text-white ipn-bg ipn-bg-dark shadow-glow transition duration-150 ease-in-out">
                     Calcular Riesgo Cardiovascular Integral
                 </button>
             </div>
@@ -896,14 +872,12 @@
             document.getElementById('reset-button').classList.add('hidden');
             document.getElementById('sheet-status').classList.add('hidden');
             
-            // Reinicia el estado del checkbox y el botón de cálculo
-            const termsCheckbox = document.getElementById('accept-terms-final');
+            // ELIMINAMOS LÓGICA DE CHECKBOX
+            // El botón de cálculo vuelve a estar habilitado por defecto
             const calcButton = document.getElementById('calculate-button');
-            
-            if (termsCheckbox) termsCheckbox.checked = false;
             if (calcButton) {
-                calcButton.disabled = true;
-                calcButton.classList.add('opacity-50', 'cursor-not-allowed');
+                calcButton.disabled = false;
+                calcButton.classList.remove('opacity-50', 'cursor-not-allowed');
             }
 
             document.getElementById('calc-form').reset();
@@ -915,37 +889,23 @@
             const calcButton = document.getElementById('calculate-button');
             const resetButton = document.getElementById('reset-button');
             const printButton = document.getElementById('print-button');
-            const termsCheckbox = document.getElementById('accept-terms-final'); 
-            const inputForm = document.getElementById('input-form');
-            const resultsSection = document.getElementById('results-section');
-
-            // 1. Asegurar que el formulario de entrada es visible y los resultados están ocultos al cargar
-            if (inputForm) inputForm.classList.remove('hidden');
-            if (resultsSection) resultsSection.classList.add('hidden');
+            
+            // Eliminamos la dependencia del checkbox
             
             if (calcButton) { calcButton.onclick = async (e) => { e.preventDefault(); await calculateRisk_v2(); }; }
             if (resetButton) { resetButton.onclick = resetForm; }
             if (printButton) { printButton.onclick = (e) => { e.preventDefault(); window.print(); }; }
             
-            // 2. Controla la habilitación del botón de Cálculo basado en el checkbox
-            if (termsCheckbox && calcButton) {
-                // Al cargar, aseguramos que el botón está deshabilitado
-                calcButton.disabled = true;
-                calcButton.classList.add('opacity-50', 'cursor-not-allowed');
+            // Aseguramos que el formulario de entrada es visible y los resultados están ocultos al cargar
+            document.getElementById('input-form').classList.remove('hidden');
+            document.getElementById('results-section').classList.add('hidden');
 
-                termsCheckbox.addEventListener('change', () => {
-                    const isChecked = termsCheckbox.checked;
-                    calcButton.disabled = !isChecked;
-                    
-                    if (isChecked) {
-                        calcButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                    } else {
-                        calcButton.classList.add('opacity-50', 'cursor-not-allowed');
-                    }
-                });
+            // Habilitamos el botón de cálculo por defecto al cargar la página
+            if (calcButton) {
+                calcButton.disabled = false;
+                calcButton.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         });
     </script>
 </body>
 </html>
-
