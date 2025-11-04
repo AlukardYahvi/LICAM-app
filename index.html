@@ -45,7 +45,7 @@
     </style>
 </head>
 <body class="p-4 md:p-8">
-
+    
     <div id="main-content" class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-2xl border-t-8 ipn-border">
         <header class="text-center mb-8">
             <div class="flex justify-center items-center space-x-6 mb-4">
@@ -553,6 +553,7 @@
         // ====================================================================
 
         async function calculateRisk_v2() {
+            // El botón de cálculo ahora está deshabilitado si el checkbox no está marcado.
             const validationDiv = document.getElementById('validation-message');
             validationDiv.classList.add('hidden');
             document.getElementById('sheet-status').classList.add('hidden');
@@ -886,7 +887,7 @@
         }
 
         function resetForm() {
-            // Oculta los resultados y muestra el formulario de ingreso
+            // Muestra el formulario de ingreso
             document.getElementById('input-form').classList.remove('hidden'); 
             document.getElementById('results-section').classList.add('hidden');
             document.getElementById('reset-button').classList.add('hidden');
@@ -912,6 +913,12 @@
             const resetButton = document.getElementById('reset-button');
             const printButton = document.getElementById('print-button');
             const termsCheckbox = document.getElementById('accept-terms-final'); 
+            const inputForm = document.getElementById('input-form');
+            const resultsSection = document.getElementById('results-section');
+
+            // Asegurar que el formulario de entrada es visible y los resultados están ocultos al cargar
+            if (inputForm) inputForm.classList.remove('hidden');
+            if (resultsSection) resultsSection.classList.add('hidden');
             
             if (calcButton) { calcButton.onclick = async (e) => { e.preventDefault(); await calculateRisk_v2(); }; }
             if (resetButton) { resetButton.onclick = resetForm; }
