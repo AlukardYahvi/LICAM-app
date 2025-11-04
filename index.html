@@ -872,7 +872,6 @@
             document.getElementById('reset-button').classList.add('hidden');
             document.getElementById('sheet-status').classList.add('hidden');
             
-            // ELIMINAMOS LÓGICA DE CHECKBOX
             // El botón de cálculo vuelve a estar habilitado por defecto
             const calcButton = document.getElementById('calculate-button');
             if (calcButton) {
@@ -889,10 +888,12 @@
             const calcButton = document.getElementById('calculate-button');
             const resetButton = document.getElementById('reset-button');
             const printButton = document.getElementById('print-button');
-            
+            const inputForm = document.getElementById('input-form');
+            const resultsSection = document.getElementById('results-section');
+
             // 1. Asegurar que el formulario de entrada es visible y los resultados están ocultos al cargar
-            document.getElementById('input-form').classList.remove('hidden');
-            document.getElementById('results-section').classList.add('hidden');
+            if (inputForm) inputForm.classList.remove('hidden');
+            if (resultsSection) resultsSection.classList.add('hidden');
             
             if (calcButton) { calcButton.onclick = async (e) => { e.preventDefault(); await calculateRisk_v2(); }; }
             if (resetButton) { resetButton.onclick = resetForm; }
