@@ -1,4109 +1,951 @@
 <!DOCTYPE html>
-
 <html lang="es">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>LICAM Asistente de Laboratorio</title>
-
+    <title>Calculadora de Riesgo Cardiometabólico Integral (v2.0)</title>
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-
+        /* Estilos generales y de tipografía */
         body {
-
             font-family: 'Inter', sans-serif;
-
-            background-color: #f8fafc;
-
+            background-color: #f1f5f9; /* Fondo gris suave */
         }
+        
+        /* Paleta de riesgo */
+        .risk-low { background-color: #d1fae5; color: #065f46; border-color: #34d399; }
+        .risk-moderate { background-color: #fef3c7; color: #92400e; border-color: #fcd34d; }
+        .risk-high { background-color: #fee2e2; color: #991b1b; border-color: #f87171; }
+        .risk-very-high { background-color: #eeb8b8; color: #570a0a; border-color: #c95d5d; } 
 
-        .tab-button {
-
+        /* IPN/ESM Accent - Rojo Vino (Acento principal) */
+        .ipn-accent { color: #8e1818; } 
+        .ipn-border { border-color: #b91c1c; }
+        .ipn-bg { background-color: #b91c1c; } 
+        .ipn-bg-dark:hover { background-color: #7c0000; } 
+        
+        /* Efecto de sombra para botón principal */
+        .shadow-glow {
+            box-shadow: 0 0 20px rgba(185, 28, 28, 0.4);
             transition: all 0.3s ease;
-
         }
 
-        .tab-button.active {
-
-            border-color: #3b82f6;
-
-            background-color: #3b82f6;
-
-            color: white;
-
+        /* ==== SECCIÓN CSS DE IMPRESIÓN ==== */
+        @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; margin: 0; background-color: #ffffff; }
+            .max-w-6xl { max-width: 100% !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; }
+            .ipn-accent, .ipn-border, .ipn-bg, .risk-low, .risk-moderate, .risk-high, .risk-very-high {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                background-color: inherit; 
+            }
         }
-
-        .well {
-
-            transition: all 0.2s ease;
-
-            border: 2px solid #d1d5db;
-
-        }
-
-        .well.selected {
-
-            background-color: #93c5fd;
-
-            border-color: #3b82f6;
-
-            transform: scale(1.1);
-
-        }
-
-        .well:not(.configured) .well-label {
-
-            opacity: 0.5;
-
-        }
-
-        .well.configured .well-label {
-
-            font-weight: bold;
-
-        }
-
-        /* Well Type Colors */
-
-        .well.control { border-color: #10b981; } /* Green 500 */
-
-        .well.experimental { border-color: #ef4444; } /* Red 500 */
-
-        .well.blanco { border-color: #6366f1; } /* Indigo 500 */
-
-        .well.tratamiento-1 { border-color: #f97316; } /* Orange 500 */
-
-        .well.tratamiento-2 { border-color: #8b5cf6; } /* Violet 500 */
-
-
-
-        .modal {
-
-            display: none;
-
-            animation: fadeIn 0.3s ease;
-
-        }
-
-        @keyframes fadeIn {
-
-            from { opacity: 0; }
-
-            to { opacity: 1; }
-
-        }
-
-        .toast {
-
-            visibility: hidden;
-
-            opacity: 0;
-
-            transition: visibility 0s 0.5s, opacity 0.5s linear;
-
-        }
-
-        .toast.show {
-
-            visibility: visible;
-
-            opacity: 1;
-
-            transition: opacity 0.5s linear;
-
-        }
-
-        .sub-calc {
-
-            display: none;
-
-        }
-
-        /* Styles for animal model data table */
-
-        #model-data-table th, #model-data-table td {
-
-             border: 1px solid #e5e7eb;
-
-             padding: 8px;
-
-             text-align: left;
-
-        }
-
-        #model-data-table th {
-
-            background-color: #f3f4f6;
-
-        }
-
-        /* Prose styles for guide */
-
-         .prose h3 { margin-top: 1.5em; margin-bottom: 0.5em; font-weight: 600; }
-
-         .prose p { margin-bottom: 1em; }
-
-         .prose ul { list-style-type: disc; margin-left: 1.5em; margin-bottom: 1em; }
-
-         .prose li { margin-bottom: 0.5em; }
-
-         .prose strong { font-weight: 600; }
-
-         .prose code { background-color: #e5e7eb; padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.9em;}
-
     </style>
-
 </head>
-
-<body class="bg-gray-50 text-gray-800">
-
-
-
-    <!-- Header -->
-
-    <header class="bg-white shadow-md">
-
-        <div class="container mx-auto px-4 py-4 flex justify-between items-center">
-
-            <h1 class="text-2xl font-bold text-blue-600">LICAM Asistente de Laboratorio</h1>
-
-        </div>
-
-    </header>
-
-
-
-    <!-- Main Content -->
-
-    <main class="container mx-auto p-4 md:p-6">
-
-        <!-- Tabs -->
-
-        <div class="mb-6 border-b border-gray-200">
-
-            <nav class="flex space-x-2 overflow-x-auto pb-2" aria-label="Tabs">
-
-                 <button onclick="changeTab('guide')" id="tab-guide" class="tab-button active text-sm font-medium py-2 px-4 rounded-t-lg border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 flex-shrink-0">Guía de Uso</button>
-
-                <button onclick="changeTab('planner')" id="tab-planner" class="tab-button text-sm font-medium py-2 px-4 rounded-t-lg border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 flex-shrink-0">Organizador de Cultivo</button>
-
-                <button onclick="changeTab('models')" id="tab-models" class="tab-button text-sm font-medium py-2 px-4 rounded-t-lg border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 flex-shrink-0">Modelos Animales</button>
-
-                <button onclick="changeTab('protocols')" id="tab-protocols" class="tab-button text-sm font-medium py-2 px-4 rounded-t-lg border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 flex-shrink-0">Protocolos y Recursos</button>
-
-                <button onclick="changeTab('report')" id="tab-report" class="tab-button text-sm font-medium py-2 px-4 rounded-t-lg border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 flex-shrink-0">Reporte del Experimento</button>
-
-                <button onclick="changeTab('calculators')" id="tab-calculators" class="tab-button text-sm font-medium py-2 px-4 rounded-t-lg border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 flex-shrink-0">Calculadoras Rápidas</button>
-
-                <button onclick="changeTab('about')" id="tab-about" class="tab-button text-sm font-medium py-2 px-4 rounded-t-lg border-b-2 border-transparent hover:border-blue-500 hover:text-blue-600 flex-shrink-0">Acerca del Proyecto</button>
-
-            </nav>
-
-        </div>
-
-
-
-        <!-- Guide Tab Content -->
-
-        <div id="content-guide" class="space-y-6 bg-white p-8 rounded-2xl shadow-lg">
-
-             <h2 class="text-2xl font-bold text-gray-800 border-b pb-4">Guía de Uso Rápido</h2>
-
-             <div class="prose max-w-none">
-
-                 <p>¡Bienvenido/a al Asistente de Laboratorio LICAM! Esta guía te ayudará a usar las funciones principales.</p>
-
-                 <h3>Organizador de Cultivo</h3>
-
-                 <p>Esta es la sección principal para planificar tus experimentos en placas.</p>
-
-                 <ul>
-
-                     <li><strong>1. Configuración del Experimento:</strong> Dale un nombre a tu experimento y selecciona el tipo de placa (6, 12, 24, 48, 96 pozos). Haz clic en "Generar Placa".</li>
-
-                     <li><strong>Guardar/Cargar Experimento:</strong> Usa los botones verdes y grises para guardar tu progreso en un archivo <code>.json</code> o cargar un experimento previamente guardado.</li>
-
-                     <li><strong>2. Diseño de la Placa:</strong> Haz clic en los pozos para seleccionarlos (se pondrán azules). Puedes seleccionar varios. Usa "Seleccionar Todos" o "Limpiar Selección" para ayudarte.</li>
-
-                     <li><strong>Configurar Pozo(s):</strong> Con los pozos seleccionados, haz clic en "Configurar Pozo(s)". Se abrirá una ventana:
-
-                        <ul>
-
-                            <li><strong>Parámetros Generales:</strong> Define el Tipo de Pozo (Control, Experimental, etc. - esto cambia el color del borde), el Volumen Total Final y la Cantidad de Células por pozo. Usa el icono ⚙️ junto a Células para:
-
-                                <ul>
-
-                                    <li>Calcular el volumen a tomar de tu stock celular (necesitas la concentración de tu stock).</li>
-
-                                    <li>O usar la calculadora de Cámara de Neubauer: introduce los conteos de 4 cuadrantes y haz clic en "Calcular Concentración" para obtener la concentración de tu stock en células/mL.</li>
-
-                                </ul>
-
-                            </li>
-
-                             <li><strong>Variables/Reactivos:</strong> Añade los reactivos (PMA, LPS, etc.) que usarás. Define la Concentración Final deseada. Usa el icono ⚙️ para calcular cuánto volumen tomar de tu reactivo stock (necesitas la concentración del stock).</li>
-
-                             <li><strong>Pasos del Protocolo:</strong> Define los pasos secuenciales de tu experimento (Ej. Paso 1: Incubación PMA, Duración: 24 horas; Paso 2: Lavado + LPS, Duración: 12 horas). Añade tantos pasos como necesites.</li>
-
-                        </ul>
-
-                     </li>
-
-                     <li><strong>3. Creador de Stock General:</strong> Selecciona los pozos que tendrán la misma mezcla (usualmente réplicas) y haz clic en "Calcular Stock...". Indica un porcentaje extra si lo deseas. La tabla te mostrará cuánto necesitas preparar en total de células y el objetivo para cada reactivo. <strong>Nota:</strong> Los volúmenes exactos de cada componente dependen de tus concentraciones de stock, que puedes calcular con las herramientas ⚙️.</li>
-
-                     <li><strong>4. Cronograma del Protocolo:</strong> Aquí aparecerán todos los Pasos del Protocolo que definiste. Cada paso tendrá su propio temporizador. Haz clic en "Iniciar" para comenzar la cuenta regresiva. Recibirás una notificación en tu computadora cuando termine (si la página está abierta y diste permiso para notificaciones).</li>
-
-                 </ul>
-
-
-
-                 <h3>Modelos Animales</h3>
-
-                 <p>Sección para llevar un registro de datos de modelos animales y calcular dosis.</p>
-
-                 <ul>
-
-                     <li><strong>Añadir Modelo:</strong> Escribe un ID único para tu modelo (ej. Ratón-01) y haz clic en "Añadir Modelo".</li>
-
-                     <li><strong>Registrar Datos:</strong> Para cada modelo, puedes añadir entradas de datos haciendo clic en "+ Añadir Registro". Introduce Peso (g), Talla (cm), Glucosa (mg/dL), Fuerza de Agarre (gf) y Notas. La fecha se guarda automáticamente.</li>
-
-                     <li><strong>Guardar/Cargar Datos Modelos:</strong> Usa los botones al principio para guardar todos los datos de los modelos en un archivo <code>.json</code> o cargar datos previamente guardados.</li>
-
-                     <li><strong>Calculadora de Dosificación:</strong> Introduce la Dosis deseada (ej. 10 mg por cada 1 kg), el Peso actual del modelo y la Concentración de tu fármaco stock. Haz clic en "Calcular Volumen..." para saber cuánto administrar (asegúrate de seleccionar las unidades correctas en todos los campos).</li>
-
-                 </ul>
-
-
-
-                  <h3>Protocolos y Recursos</h3>
-
-                 <p>Espacio para notas sobre protocolos comunes y enlaces a bases de datos externas.</p>
-
-                 <ul>
-
-                     <li><strong>Protocolos Comunes:</strong> Actualmente incluye un esquema básico para extracción de ARN. Puedes expandir esto o añadir otros protocolos.</li>
-
-                     <li><strong>Bases de Datos Externas:</strong> Enlaces rápidos a NCBI (PubMed, Gene) para búsquedas bibliográficas o de información genética.</li>
-
-                 </ul>
-
-
-
-
-
-                 <h3>Reporte del Experimento</h3>
-
-                 <p>Genera un resumen de tu experimento planificado.</p>
-
-                 <ul>
-
-                     <li>Haz clic en "Generar Reporte Completo" para ver un resumen en pantalla de la configuración de tus pozos y el protocolo.</li>
-
-                     <li>Una vez generado, puedes hacer clic en "Descargar Reporte (CSV)" para obtener un archivo compatible con Excel o Google Sheets, ideal para tu bitácora.</li>
-
-                 </ul>
-
-
-
-                 <h3>Calculadoras Rápidas</h3>
-
-                 <p>Herramientas independientes para cálculos comunes.</p>
-
-                 <ul>
-
-                    <li><strong>Masa Molar:</strong> Escribe una fórmula química (ej. <code>C6H12O6</code>) y obtén su masa molar.</li>
-
-                    <li><strong>Conversor de Unidades:</strong> Convierte entre diferentes unidades de masa, volumen y concentración (incluyendo unidades combinadas como mg/mL).</li>
-
-                    <li><strong>Dilución (C1V1=C2V2):</strong> Introduce 3 de los 4 valores (Concentración Inicial, Volumen Inicial, Concentración Final, Volumen Final) con sus unidades, y calcula el valor faltante.</li>
-
-                 </ul>
-
-
-
-                  <h3>Acerca del Proyecto</h3>
-
-                  <p>Muestra información sobre el desarrollo de esta herramienta y los colaboradores.</p>
-
-             </div>
-
-        </div>
-
-
-
-        <!-- Planner Tab Content -->
-
-        <div id="content-planner" class="hidden space-y-6">
-
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-                <!-- Plate Setup -->
-
-                <div class="md:col-span-1 bg-white p-6 rounded-2xl shadow-lg">
-
-                    <h2 class="text-xl font-bold mb-4 border-b pb-2">1. Configuración del Experimento</h2>
-
-                    <div class="space-y-4">
-
-                        <div>
-
-                            <label for="exp-name" class="block text-sm font-medium text-gray-700">Nombre del Experimento:</label>
-
-                            <input type="text" id="exp-name" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500" placeholder="Ej: Curva de dosis PMA/LPS">
-
-                        </div>
-
-                        <div>
-
-                            <label for="plate-type" class="block text-sm font-medium text-gray-700">Tipo de Placa:</label>
-
-                            <select id="plate-type" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-
-                                <option value="6">6 Pozos</option>
-
-                                <option value="12">12 Pozos</option>
-
-                                <option value="24" selected>24 Pozos</option>
-
-                                <option value="48">48 Pozos</option>
-
-                                <option value="96">96 Pozos</option>
-
-                            </select>
-
-                        </div>
-
-                        <button onclick="generatePlate()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-300">Generar Placa</button>
-
-                    </div>
-
-                    <div class="mt-6 pt-4 border-t">
-
-                        <h3 class="text-lg font-bold mb-2">Guardar / Cargar Experimento</h3>
-
-                        <div class="flex space-x-2">
-
-                            <button onclick="saveExperiment()" class="flex-1 bg-green-600 text-white font-bold py-2 px-3 text-sm rounded-md hover:bg-green-700">Guardar</button>
-
-                            <label for="load-exp-input" class="flex-1 bg-gray-600 text-white font-bold py-2 px-3 text-sm rounded-md hover:bg-gray-700 cursor-pointer text-center">Cargar</label>
-
-                            <input type="file" id="load-exp-input" class="hidden" accept=".json">
-
-                        </div>
-
-                    </div>
-
-                    <div class="mt-6 pt-4 border-t">
-
-                        <h3 class="text-lg font-bold mb-2">Controles de Selección</h3>
-
-                        <div class="flex space-x-2">
-
-                            <button onclick="selectAllWells()" class="flex-1 bg-gray-200 text-gray-800 py-2 px-3 text-sm rounded-md hover:bg-gray-300">Seleccionar Todos</button>
-
-                            <button onclick="clearSelection()" class="flex-1 bg-gray-200 text-gray-800 py-2 px-3 text-sm rounded-md hover:bg-gray-300">Limpiar Selección</button>
-
-                        </div>
-
-                         <button onclick="openWellConfigModal()" class="mt-4 w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition duration-300">Configurar Pozo(s)</button>
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- Plate Layout -->
-
-                <div class="md:col-span-2 bg-white p-6 rounded-2xl shadow-lg">
-
-                    <div class="flex justify-between items-center mb-4 border-b pb-2">
-
-                        <h2 class="text-xl font-bold">2. Diseño de la Placa</h2>
-
-                        <div class="flex space-x-4 text-xs items-center">
-
-                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-white border-2 border-green-500 mr-1"></span>Control</span>
-
-                            <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-white border-2 border-red-500 mr-1"></span>Experimental</span>
-
-                             <span class="flex items-center"><span class="w-3 h-3 rounded-full bg-white border-2 border-indigo-500 mr-1"></span>Blanco</span>
-
-                        </div>
-
-                    </div>
-
-                    <div id="plate-layout-container" class="p-4 bg-gray-100 rounded-lg overflow-x-auto">
-
-                        <div id="plate-layout" class="grid gap-2" style="grid-template-columns: repeat(6, 1fr); display:none;">
-
-                            <!-- Wells will be generated here -->
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-            
-
-            <!-- Stock Mix Section -->
-
-            <div class="bg-white p-6 rounded-2xl shadow-lg">
-
-                 <h2 class="text-xl font-bold mb-4 border-b pb-2">3. Creador de Stock General</h2>
-
-                 <div class="flex items-center space-x-4 mb-4">
-
-                    <button onclick="calculateMasterMix()" class="bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 transition duration-300">Calcular Stock para Pozos Seleccionados</button>
-
-                    <div class="flex items-center">
-
-                         <label for="extra-volume" class="mr-2 text-sm font-medium">Volumen extra (%):</label>
-
-                         <input type="number" id="extra-volume" value="10" class="w-20 border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500">
-
-                    </div>
-
-                 </div>
-
-                 <div id="master-mix-results" class="p-4 bg-gray-50 rounded-lg">
-
-                    <p class="text-gray-500">Los resultados del cálculo para el stock general aparecerán aquí.</p>
-
-                 </div>
-
-            </div>
-
-
-
-             <!-- Protocol Schedule Section -->
-
-            <div class="bg-white p-6 rounded-2xl shadow-lg">
-
-                <h2 class="text-xl font-bold mb-4 border-b pb-2">4. Cronograma del Protocolo</h2>
-
-                <div class="text-sm text-gray-600 mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-
-                    <b>Nota sobre Notificaciones:</b> Las alertas se mostrarán en esta computadora siempre y cuando esta página web permanezca abierta. Para recibir notificaciones por correo o celular se requiere un servidor (backend), lo cual es una funcionalidad más avanzada.
-
-                </div>
-
-                <div id="protocol-schedule-container" class="space-y-2">
-
-                    <p class="text-gray-500">Los eventos del protocolo para los pozos configurados aparecerán aquí.</p>
-
-                </div>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- Animal Models Tab Content -->
-
-        <div id="content-models" class="hidden space-y-6">
-
-             <div class="bg-white p-6 rounded-2xl shadow-lg">
-
-                 <h2 class="text-xl font-bold mb-4 border-b pb-2">Seguimiento de Modelos Animales</h2>
-
-                 <div class="flex space-x-2 mb-4">
-
-                     <button onclick="saveModelData()" class="bg-green-600 text-white font-bold py-2 px-3 text-sm rounded-md hover:bg-green-700">Guardar Datos Modelos</button>
-
-                     <label for="load-model-input" class="bg-gray-600 text-white font-bold py-2 px-3 text-sm rounded-md hover:bg-gray-700 cursor-pointer text-center">Cargar Datos Modelos</label>
-
-                     <input type="file" id="load-model-input" class="hidden" accept=".json">
-
-                 </div>
-
-                 <div class="mb-4">
-
-                     <label for="model-type-selector" class="block text-sm font-medium text-gray-700">Tipo de Modelo:</label>
-
-                     <select id="model-type-selector" class="mt-1 border-gray-300 rounded-md shadow-sm">
-
-                         <option value="murino">Murino</option>
-
-                         <!-- Add other model types here if needed -->
-
-                     </select>
-
-                 </div>
-
-                 <div class="mb-4 flex space-x-2">
-
-                     <input type="text" id="new-model-id" placeholder="ID Nuevo Modelo" class="border-gray-300 rounded-md shadow-sm">
-
-                     <button onclick="addAnimalModel()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Añadir Modelo</button>
-
-                 </div>
-
-                 <div id="animal-models-container" class="space-y-4">
-
-                     <!-- Animal model sections will be added here -->
-
-                 </div>
-
-            </div>
-
-            <div class="bg-white p-6 rounded-2xl shadow-lg">
-
-                 <h2 class="text-xl font-bold mb-4 border-b pb-2">Calculadora de Dosificación por Peso</h2>
-
-                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
-
-                     <!-- Dosis -->
-
-                     <div>
-
-                        <label class="block text-sm font-medium">Dosis Deseada:</label>
-
-                        <div class="flex space-x-1 mt-1">
-
-                            <input type="number" id="dose-amount" placeholder="Cantidad" class="w-1/2 border-gray-300 rounded-md shadow-sm">
-
-                            <select id="dose-amount-unit" class="w-1/2 border-gray-300 rounded-md shadow-sm"></select>
-
-                         </div>
-
-                         <div class="flex space-x-1 mt-1 items-center text-sm">
-
-                            <span>por cada</span>
-
-                            <input type="number" id="dose-weight-unit-val" value="1" class="w-1/4 border-gray-300 rounded-md shadow-sm">
-
-                            <select id="dose-weight-unit" class="w-1/2 border-gray-300 rounded-md shadow-sm">
-
-                                <option value="g">g</option>
-
-                                <option value="kg" selected>kg</option>
-
-                            </select>
-
-                         </div>
-
-                     </div>
-
-                     <!-- Modelo -->
-
-                     <div>
-
-                        <label class="block text-sm font-medium">Peso del Modelo:</label>
-
-                         <div class="flex space-x-1 mt-1">
-
-                            <input type="number" id="model-weight" placeholder="Peso" class="w-1/2 border-gray-300 rounded-md shadow-sm">
-
-                            <select id="model-weight-unit" class="w-1/2 border-gray-300 rounded-md shadow-sm">
-
-                                <option value="g" selected>g</option>
-
-                                <option value="kg">kg</option>
-
-                            </select>
-
-                         </div>
-
-                     </div>
-
-                      <!-- Stock -->
-
-                     <div>
-
-                         <label class="block text-sm font-medium">Concentración del Stock:</label>
-
-                         <div class="flex space-x-1 mt-1">
-
-                             <input type="number" id="stock-conc-dose" placeholder="Conc." class="w-1/2 border-gray-300 rounded-md shadow-sm">
-
-                             <select id="stock-conc-dose-unit" class="w-1/2 border-gray-300 rounded-md shadow-sm"></select>
-
-                         </div>
-
-                     </div>
-
-                 </div>
-
-                 <div class="mt-4 flex justify-between items-center">
-
-                      <button onclick="calculateModelDose()" class="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700">Calcular Volumen a Administrar</button>
-
-                      <div class="flex items-center space-x-2">
-
-                           <label class="text-sm font-medium">en:</label>
-
-                           <select id="dose-output-unit" class="border-gray-300 rounded-md shadow-sm">
-
-                               <option value="µL" selected>µL</option>
-
-                               <option value="mL">mL</option>
-
-                           </select>
-
-                      </div>
-
-                 </div>
-
-                 <div id="dose-calculation-result" class="mt-4 p-4 bg-gray-100 rounded-lg font-mono"></div>
-
-            </div>
-
-        </div>
-
-
-
-         <!-- Protocols and Resources Tab Content -->
-
-        <div id="content-protocols" class="hidden space-y-6 bg-white p-8 rounded-2xl shadow-lg">
-
-             <h2 class="text-2xl font-bold text-gray-800 border-b pb-4">Protocolos Comunes y Recursos Externos</h2>
-
-             <div class="prose max-w-none grid grid-cols-1 md:grid-cols-2 gap-8">
-
-                 <div>
-
-                     <h3>Protocolos Comunes (Notas)</h3>
-
-                     <div class="p-4 border rounded-lg bg-gray-50">
-
-                         <h4>Extracción de ARN (Esquema Básico)</h4>
-
-                         <p>Este es un lugar para tus notas o un checklist simple:</p>
-
-                         <ul class="list-disc list-inside text-sm">
-
-                             <li>Lisis celular (ej. Trizol)</li>
-
-                             <li>Separación de fases (Cloroformo)</li>
-
-                             <li>Precipitación de ARN (Isopropanol)</li>
-
-                             <li>Lavados (Etanol 70-75%)</li>
-
-                             <li>Resuspensión (Agua libre de nucleasas)</li>
-
-                             <li>Cuantificación (Nanodrop/Qubit)</li>
-
-                             <li>Control de Calidad (Gel/Bioanalyzer)</li>
-
-                         </ul>
-
-                         <p class="text-xs text-gray-500 mt-2">Puedes editar este archivo HTML para añadir detalles específicos de tus kits o protocolos.</p>
-
-                     </div>
-
-                     <!-- Add more protocol notes sections here -->
-
-                 </div>
-
-                 <div>
-
-                     <h3>Bases de Datos Externas</h3>
-
-                     <p>Enlaces rápidos a recursos útiles:</p>
-
-                     <ul class="list-disc list-inside">
-
-                         <li><a href="https://pubmed.ncbi.nlm.nih.gov/" target="_blank" class="text-blue-600 hover:underline">PubMed (NCBI):</a> Búsqueda de literatura biomédica.</li>
-
-                         <li><a href="https://www.ncbi.nlm.nih.gov/gene/" target="_blank" class="text-blue-600 hover:underline">NCBI Gene:</a> Información sobre genes específicos.</li>
-
-                         <li><a href="https://blast.ncbi.nlm.nih.gov/Blast.cgi" target="_blank" class="text-blue-600 hover:underline">NCBI BLAST:</a> Búsqueda de secuencias similares.</li>
-
-                         <li><a href="https://www.uniprot.org/" target="_blank" class="text-blue-600 hover:underline">UniProt:</a> Información sobre proteínas.</li>
-
-                         <li><a href="https://www.rcsb.org/" target="_blank" class="text-blue-600 hover:underline">Protein Data Bank (PDB):</a> Estructuras 3D de proteínas y ácidos nucleicos.</li>
-
-                         <!-- Add more links as needed -->
-
-                     </ul>
-
-                 </div>
-
-             </div>
-
-        </div>
-
-
-
-
-
-        <!-- Report Tab Content -->
-
-        <div id="content-report" class="hidden space-y-6 bg-white p-8 rounded-2xl shadow-lg">
-
-            <h2 class="text-2xl font-bold text-gray-800 border-b pb-4">Reporte del Experimento</h2>
-
-            <div class="flex space-x-4">
-
-                <button onclick="generateReport()" class="bg-teal-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-teal-700">Generar Reporte Completo</button>
-
-                <button onclick="exportReportCSV()" id="export-csv-btn" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 hidden">Descargar Reporte (CSV)</button>
-
-            </div>
-
-            <div id="report-output" class="prose max-w-none mt-4 border-t pt-4">
-
-                <p class="text-gray-500">Haz clic en el botón para generar un resumen de tu experimento.</p>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- Calculators Tab Content -->
-
-        <div id="content-calculators" class="hidden space-y-6">
-
-            <!-- Molarity Calculator -->
-
-            <div class="bg-white p-6 rounded-2xl shadow-lg">
-
-                <h2 class="text-xl font-bold mb-4">Calculadora de Molaridad y Masa Molar</h2>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    <div>
-
-                        <label for="chem-formula" class="block text-sm font-medium text-gray-700">Fórmula Química:</label>
-
-                        <input type="text" id="chem-formula" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Ej: C6H12O6, NaCl">
-
-                    </div>
-
-                    <div>
-
-                        <label class="block text-sm font-medium text-gray-700">&nbsp;</label>
-
-                        <button onclick="calculateMolarMass()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Calcular Masa Molar</button>
-
-                    </div>
-
-                </div>
-
-                <div id="molar-mass-result" class="mt-4 p-4 bg-gray-100 rounded-lg font-mono"></div>
-
-            </div>
-
-
-
-            <!-- Unit Conversion -->
-
-            <div class="bg-white p-6 rounded-2xl shadow-lg">
-
-                <h2 class="text-xl font-bold mb-4">Conversor de Unidades</h2>
-
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-
-                     <div>
-
-                        <label for="uc-value" class="block text-sm font-medium text-gray-700">Valor:</label>
-
-                        <input type="number" id="uc-value" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-
-                    </div>
-
-                    <div>
-
-                        <label for="uc-from" class="block text-sm font-medium text-gray-700">Desde:</label>
-
-                        <select id="uc-from" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
-
-                    </div>
-
-                    <div>
-
-                        <label for="uc-to" class="block text-sm font-medium text-gray-700">Hasta:</label>
-
-                        <select id="uc-to" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
-
-                    </div>
-
-                    <button onclick="convertUnits()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Convertir</button>
-
-                </div>
-
-                 <div id="uc-result" class="mt-4 p-4 bg-gray-100 rounded-lg font-mono"></div>
-
-            </div>
-
-
-
-            <!-- Dilution Calculator -->
-
-            <div class="bg-white p-6 rounded-2xl shadow-lg">
-
-                <h2 class="text-xl font-bold mb-4">Calculadora de Dilución (C1V1 = C2V2)</h2>
-
-                <div class="space-y-4">
-
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-
-                        <div>
-
-                            <label for="c1" class="block text-sm font-medium text-gray-700">C1 (Stock):</label>
-
-                            <input type="number" id="c1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Conc. inicial">
-
-                        </div>
-
-                         <div>
-
-                            <label for="c1-unit" class="block text-sm font-medium text-gray-700">Unidad C1:</label>
-
-                            <select id="c1-unit" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
-
-                        </div>
-
-                         <div>
-
-                            <label for="v1" class="block text-sm font-medium text-gray-700">V1 (Stock):</label>
-
-                            <input type="number" id="v1" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Vol. inicial">
-
-                        </div>
-
-                         <div>
-
-                            <label for="v1-unit" class="block text-sm font-medium text-gray-700">Unidad V1:</label>
-
-                            <select id="v1-unit" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
-
-                        </div>
-
-                        <div>
-
-                            <label for="c2" class="block text-sm font-medium text-gray-700">C2 (Final):</label>
-
-                            <input type="number" id="c2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Conc. final">
-
-                        </div>
-
-                         <div>
-
-                            <label for="c2-unit" class="block text-sm font-medium text-gray-700">Unidad C2:</label>
-
-                            <select id="c2-unit" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
-
-                        </div>
-
-                         <div>
-
-                            <label for="v2" class="block text-sm font-medium text-gray-700">V2 (Final):</label>
-
-                            <input type="number" id="v2" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" placeholder="Vol. final">
-
-                        </div>
-
-                         <div>
-
-                            <label for="v2-unit" class="block text-sm font-medium text-gray-700">Unidad V2:</label>
-
-                            <select id="v2-unit" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></select>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-                <div class="mt-4">
-
-                    <button onclick="calculateDilution()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Calcular Valor Faltante</button>
-
-                </div>
-
-                <div id="dilution-result" class="mt-4 p-4 bg-gray-100 rounded-lg font-mono"></div>
-
-            </div>
-
-        </div>
-
-
-
-        <!-- About Tab Content -->
-
-        <div id="content-about" class="hidden space-y-6 bg-white p-8 rounded-2xl shadow-lg">
-
-            <h2 class="text-2xl font-bold text-gray-800 border-b pb-4">Información del Proyecto y Colaboradores</h2>
-
-            <div class="prose max-w-none">
-
-                <p>Esta aplicación es una herramienta de apoyo desarrollada como parte de un proyecto de tesis.</p>
-
-                
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
-
-                    <div>
-
-                        <h3 class="font-bold text-lg text-blue-600">Presenta y Asesoría</h3>
-
-                        <ul class="list-disc list-inside mt-2 space-y-1">
-
-                            <li><b>Tesista:</b> Edsel Yahvi Méndez Hernández</li>
-
-                            <li><b>Asesora Externa:</b> Dra. Nayelli Nájera García</li>
-
-                            <li><b>Asesor Interno (Docente):</b> Dr. Bustos García Juan Roberto Israel</li>
-
-                        </ul>
-
-                    </div>
-
-                    <div>
-
-                        <h3 class="font-bold text-lg text-blue-600">Institución y Laboratorio</h3>
-
-                         <ul class="list-disc list-inside mt-2 space-y-1">
-
-                            <li><b>Institución:</b> Escuela Superior de Medicina (ESM) - IPN</li>
-
-                            <li><b>Laboratorio Colaborador (LICAM):</b> Investigación Integral Cardiometabólica (IPN)</li>
-
-                        </ul>
-
-                    </div>
-
-                </div>
-
-                
-
-                <div class="mt-8 pt-6 border-t">
-
-                     <h3 class="font-bold text-lg text-blue-600">Contacto y Ubicación (LICAM)</h3>
-
-                     <p class="mt-2"><b>Dirección:</b> Plan de San Luis y Díaz Mirón s/n Col. Casco de Santo Tomás, Miguel Hidalgo, 11340, Ciudad de México, CDMX.</p>
-
-                     <p><b>Correo:</b> nnajerag@ipn.mx</p>
-
-                     <p><b>Teléfono:</b> 55 5729 6300 ext 62820</p>
-
-                     <p class="mt-2">
-
-                        <b>Sitios de Interés:</b>
-
-                        <a href="https://cemiztli.wixsite.com/cardiometabolismo" target="_blank" class="text-blue-600 hover:underline">Website</a> | 
-
-                        <a href="#" class="text-blue-500 hover:underline">Facebook</a> | 
-
-                        <a href="#" class="text-blue-500 hover:underline">Instagram</a>
-
-                    </p>
-
-                </div>
-
-
-
-            </div>
-
-        </div>
-
-    </main>
-
-
-
-    <!-- Well Configuration Modal -->
-
-    <div id="well-config-modal" class="modal fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4">
-
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto p-8">
-
-            <div class="flex justify-between items-center border-b pb-4 mb-6">
-
-                <h2 class="text-2xl font-bold">Configurar Pozo(s): <span id="well-ids-display" class="text-blue-600"></span></h2>
-
-                <button onclick="closeWellConfigModal()" class="text-gray-500 hover:text-gray-800">&times;</button>
-
-            </div>
-
-            
-
-            <div class="space-y-6">
-
-                <!-- General -->
-
-                <div>
-
-                    <h3 class="font-bold text-lg mb-2 text-gray-700">Parámetros Generales</h3>
-
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-gray-50">
-
-                        <div>
-
-                            <label for="well-type" class="block text-sm font-medium text-gray-700">Tipo de Pozo:</label>
-
-                             <select id="well-type" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
-
-                                <option value="default">No Asignado</option>
-
-                                <option value="control">Control</option>
-
-                                <option value="experimental">Experimental</option>
-
-                                <option value="blanco">Blanco</option>
-
-                                <option value="tratamiento-1">Tratamiento 1</option>
-
-                                <option value="tratamiento-2">Tratamiento 2</option>
-
-                            </select>
-
-                        </div>
-
-                        <div>
-
-                            <label for="well-total-volume" class="block text-sm font-medium text-gray-700">Volumen Total Final (µL):</label>
-
-                            <input type="number" id="well-total-volume" class="mt-1 w-full border-gray-300 rounded-md shadow-sm" placeholder="Ej: 2000">
-
-                        </div>
-
-                        <div class="space-y-2">
-
-                             <label class="block text-sm font-medium text-gray-700">Células por Pozo:</label>
-
-                             <div class="flex items-center space-x-2">
-
-                                <input type="number" id="well-cell-count" class="w-full border-gray-300 rounded-md shadow-sm" placeholder="Ej: 200000">
-
-                                <button onclick="toggleSubCalc('cell-calc')" class="bg-gray-200 p-2 rounded-md hover:bg-gray-300">⚙️</button>
-
-                             </div>
-
-                             <div id="cell-calc" class="sub-calc p-3 border rounded-md bg-white mt-2 space-y-2">
-
-                                <div class="space-y-2">
-
-                                     <p class="text-xs font-semibold">Calcular volumen de stock celular:</p>
-
-                                     <div class="flex items-center space-x-2">
-
-                                         <input type="number" id="cell-stock-conc" placeholder="Conc. stock" class="w-full text-sm border-gray-300 rounded-md">
-
-                                         <select id="cell-stock-conc-unit" class="text-sm border-gray-300 rounded-md">
-
-                                             <option value="1">células/mL</option>
-
-                                             <option value="1000">células/µL</option>
-
-                                         </select>
-
-                                     </div>
-
-                                     <button onclick="calculateCellVolume()" class="w-full text-sm bg-blue-500 text-white py-1 rounded-md">Calcular Volumen (µL)</button>
-
-                                     <p id="cell-volume-result" class="text-sm font-medium text-blue-700"></p>
-
-                                </div>
-
-                                <div class="mt-4 pt-4 border-t space-y-2">
-
-                                    <p class="text-xs font-semibold">Calculadora Cámara de Neubauer:</p>
-
-                                    <div class="grid grid-cols-2 gap-2">
-
-                                        <input type="number" id="neubauer-q1" placeholder="Cuadrante 1" class="w-full text-sm border-gray-300 rounded-md">
-
-                                        <input type="number" id="neubauer-q2" placeholder="Cuadrante 2" class="w-full text-sm border-gray-300 rounded-md">
-
-                                        <input type="number" id="neubauer-q3" placeholder="Cuadrante 3" class="w-full text-sm border-gray-300 rounded-md">
-
-                                        <input type="number" id="neubauer-q4" placeholder="Cuadrante 4" class="w-full text-sm border-gray-300 rounded-md">
-
-                                    </div>
-
-                                    <button onclick="calculateNeubauer()" class="w-full text-sm bg-teal-500 text-white py-1 rounded-md">Calcular Concentración</button>
-
-                                </div>
-
-                             </div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
-
-
-                <!-- Variables -->
-
-                <div>
-
-                    <h3 class="font-bold text-lg mb-2 text-gray-700">Variables / Reactivos</h3>
-
-                    <div id="variables-container" class="space-y-4">
-
-                        <!-- Variable templates will be cloned here -->
-
-                    </div>
-
-                     <button onclick="addVariable()" class="mt-4 text-sm bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">+ Añadir Variable</button>
-
-                </div>
-
-
-
-                <!-- Protocol -->
-
-                <div>
-
-                    <h3 class="font-bold text-lg mb-2 text-gray-700">Pasos del Protocolo</h3>
-
-                    <div class="p-4 border rounded-lg bg-gray-50 space-y-4">
-
-                        <div id="protocol-steps-container" class="space-y-2">
-
-                            <!-- Protocol step templates will be cloned here -->
-
-                        </div>
-
-                        <button onclick="addProtocolStep()" class="text-sm bg-gray-200 text-gray-800 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300">+ Añadir Paso</button>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-
-
-            <div class="mt-8 pt-6 border-t flex justify-end space-x-4">
-
-                <button onclick="closeWellConfigModal()" class="bg-gray-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-gray-600">Cancelar</button>
-
-                <button onclick="saveWellConfig()" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-blue-700">Guardar Cambios</button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
-     <!-- Animal Model Data Entry Modal (Example - Adapt as needed) -->
-
-    <div id="model-data-modal" class="modal fixed inset-0 bg-gray-800 bg-opacity-75 flex items-center justify-center p-4">
-
-        <div class="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
-
-            <h2 class="text-xl font-bold mb-4">Añadir Registro para Modelo <span id="modal-model-id" class="text-blue-600"></span></h2>
-
-            <div class="space-y-3">
-
-                 <div>
-
-                     <label class="block text-sm font-medium">Peso (g):</label>
-
-                     <input type="number" id="modal-model-weight" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
-
-                 </div>
-
-                 <div>
-
-                     <label class="block text-sm font-medium">Talla (cm):</label>
-
-                     <input type="number" id="modal-model-size" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
-
-                 </div>
-
-                 <div>
-
-                     <label class="block text-sm font-medium">Glucosa (mg/dL):</label>
-
-                     <input type="number" id="modal-model-glucose" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
-
-                 </div>
-
-                 <div>
-
-                     <label class="block text-sm font-medium">Fuerza Agarre (gf):</label>
-
-                     <input type="number" id="modal-model-grip" class="mt-1 w-full border-gray-300 rounded-md shadow-sm">
-
-                 </div>
-
-                 <div>
-
-                     <label class="block text-sm font-medium">Notas/Otras Mediciones:</label>
-
-                     <textarea id="modal-model-notes" rows="2" class="mt-1 w-full border-gray-300 rounded-md shadow-sm"></textarea>
-
-                 </div>
-
-            </div>
-
-             <div class="mt-6 flex justify-end space-x-3">
-
-                <button onclick="closeModelDataModal()" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600">Cancelar</button>
-
-                <button onclick="saveModelDataEntry()" class="bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">Guardar Registro</button>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
-
-
-    <!-- Variable Template -->
-
-    <div id="variable-template" class="hidden p-4 border rounded-lg bg-gray-50">
-
-        <div class="grid grid-cols-1 md:grid-cols-12 gap-x-4 gap-y-2 items-center">
-
-            <div class="md:col-span-12 flex justify-between items-center">
-
-                <input type="text" class="variable-name w-1/3 border-0 bg-transparent font-semibold" placeholder="Nombre (Ej: PMA)">
-
-                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700 font-bold">Eliminar</button>
-
-            </div>
-
-
-
-            <!-- Concentration -->
-
-            <label class="md:col-span-2 text-sm font-medium">Concentración Final:</label>
-
-            <div class="md:col-span-4">
-
-                <input type="number" class="variable-final-conc w-full border-gray-300 rounded-md shadow-sm" placeholder="Valor">
-
-            </div>
-
-            <div class="md:col-span-4">
-
-                 <select class="variable-final-conc-unit w-full border-gray-300 rounded-md shadow-sm"></select>
-
-            </div>
-
-             <div class="md:col-span-2">
-
-                <button onclick="toggleSubCalc(this.dataset.target)" data-target="stock-calc-X" class="stock-calc-toggle bg-gray-200 p-2 rounded-md hover:bg-gray-300 w-full">⚙️ Calcular Stock</button>
-
-            </div>
-
-
-
-            <!-- Sub-calculator for stock -->
-
-            <div class="sub-calc md:col-span-12 p-3 border rounded-md bg-white mt-2 space-y-2">
-
-                <p class="text-xs font-semibold">Calcular volumen de stock del reactivo:</p>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
-
-                    <input type="number" class="variable-stock-conc" placeholder="Conc. stock" class="w-full text-sm border-gray-300 rounded-md">
-
-                    <select class="variable-stock-conc-unit w-full text-sm border-gray-300 rounded-md"></select>
-
-                </div>
-
-                <button onclick="calculateStockVolume(this)" class="w-full text-sm bg-blue-500 text-white py-1 rounded-md">Calcular Volumen (µL)</button>
-
-                <p class="variable-stock-volume-result text-sm font-medium text-blue-700"></p>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- Protocol Step Template -->
-
-     <div id="protocol-step-template" class="hidden p-3 border rounded-md bg-white">
-
-         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-
-             <input type="text" class="protocol-step-name" placeholder="Nombre (Ej: Incubación PMA)">
-
-             <div class="flex items-center space-x-2">
-
-                <input type="number" class="protocol-step-duration w-full" placeholder="Duración">
-
-                <select class="protocol-step-unit">
-
-                    <option value="3600000">horas</option>
-
-                    <option value="60000">minutos</option>
-
-                    <option value="86400000">días</option>
-
-                </select>
-
-            </div>
-
-            <div class="md:col-span-2 flex justify-end">
-
-                <button onclick="this.parentElement.parentElement.parentElement.remove()" class="text-red-500 hover:text-red-700 font-bold">Eliminar</button>
-
-            </div>
-
-         </div>
-
-     </div>
-
+<body class="p-4 md:p-8">
     
+    <div id="main-content" class="max-w-6xl mx-auto bg-white p-6 rounded-xl shadow-2xl border-t-8 ipn-border">
+        <header class="text-center mb-8">
+            <div class="flex justify-center items-center space-x-6 mb-4">
+                <a href="https://www.esm.ipn.mx/" target="_blank" title="Escuela Superior de Medicina - IPN">
+                    <img src="logo_esm.png" onerror="this.onerror=null;this.src='';" alt="Logo ESM" class="h-16 w-16 object-contain rounded-full shadow-md">
+                </a>
+                <a href="https://www.ipn.mx/" target="_blank" title="Instituto Politécnico Nacional">
+                    <img src="logo_ipn.png" onerror="this.onerror=null;this.src='';" alt="Logo IPN" class="h-20 w-20 object-contain shadow-lg">
+                </a>
+                 <a href="cemiztli.wixsite.com/cardiometabolismo" target="_blank" title="Laboratorio LICAM">
+                    <img src="logo_licam.png" onerror="this.onerror=null;this.src='';" alt="Logo LICAM" class="h-16 w-16 object-contain rounded-full shadow-md">
+                </a>
+            </div>
+            
+            <h1 class="text-3xl md:text-4xl font-bold ipn-accent">
+                Calculadora de Riesgo Cardiometabólico Integral
+            </h1>
+            <p class="text-lg text-gray-700 mt-2 no-print">
+                Proyecto de Tesis - Ingeniería en Biotecnología
+            </p>
+        </header>
 
-    <!-- Toast Notification -->
+        <form id="calc-form" class="no-print">
+            <div id="validation-message" class="hidden p-3 mb-4 rounded-lg bg-red-100 text-red-700 font-semibold"></div>
+            
+            <div id="input-form"> 
+                
+                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pb-2">1. Datos Personales</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div>
+                        <label for="full_name" class="block text-sm font-medium text-gray-700">Nombre Completo</label>
+                        <input type="text" id="full_name" placeholder="Nombre(s) Apellido(s)" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2 border">
+                    </div>
+                    <div>
+                        <label for="birth_date" class="block text-sm font-medium text-gray-700">Fecha de Nacimiento</label>
+                        <input type="date" id="birth_date" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2 border">
+                    </div>
+                    <div>
+                        <label for="gender" class="block text-sm font-medium text-gray-700">Sexo Biológico</label>
+                        <select id="gender" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm rounded-lg shadow-sm">
+                            <option value="male">Masculino</option>
+                            <option value="female">Femenino</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-700">Correo Electrónico (Opcional)</label>
+                        <input type="email" id="email" placeholder="ejemplo@correo.com" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2 border">
+                    </div>
+                </div>
 
-    <div id="toast" class="toast fixed bottom-5 right-5 bg-green-500 text-white py-3 px-6 rounded-lg shadow-xl">
+                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pb-2">2. Signos Vitales y Dinamometría</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div>
+                        <label for="hr" class="block text-sm font-medium text-gray-700">Frec. Cardíaca (lpm)</label>
+                        <input type="number" id="hr" placeholder="60-100" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="rr" class="block text-sm font-medium text-gray-700">Frec. Respiratoria (rpm)</label>
+                        <input type="number" id="rr" placeholder="12-20" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="grip_right" class="block text-sm font-medium text-gray-700">Fuerza Agarre Der. (Kg)</label>
+                        <input type="number" step="0.1" id="grip_right" placeholder="30.5" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="grip_left" class="block text-sm font-medium text-gray-700">Fuerza Agarre Izq. (Kg)</label>
+                        <input type="number" step="0.1" id="grip_left" placeholder="29.8" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                </div>
 
-        <p id="toast-message"></p>
+                <h3 class="text-xl font-semibold ipn-accent mb-3 border-b pb-1">2.1. Presión Arterial (Promedio)</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div>
+                        <label for="pas" class="block text-sm font-medium text-gray-700">Presión Sistólica (mmHg) - Toma 1</label>
+                        <input type="number" id="pas" value="120" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="pad" class="block text-sm font-medium text-gray-700">Presión Diastólica (mmHg) - Toma 1</label>
+                        <input type="number" id="pad" value="80" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="pa_d2_s" class="block text-sm font-medium text-gray-700">PA Día 2 S/D (Opcional)</label>
+                        <div class="flex space-x-2">
+                            <input type="number" id="pa_d2_s" placeholder="Sistólica" class="mt-1 block w-1/2 rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <input type="number" id="pa_d2_d" placeholder="Diastólica" class="mt-1 block w-1/2 rounded-lg border-gray-300 shadow-sm p-2 border">
+                        </div>
+                    </div>
+                    <div>
+                        <label for="pa_d3_s" class="block text-sm font-medium text-gray-700">PA Día 3 S/D (Opcional)</label>
+                        <div class="flex space-x-2">
+                            <input type="number" id="pa_d3_s" placeholder="Sistólica" class="mt-1 block w-1/2 rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <input type="number" id="pa_d3_d" placeholder="Diastólica" class="mt-1 block w-1/2 rounded-lg border-gray-300 shadow-sm p-2 border">
+                        </div>
+                    </div>
+                </div>
 
+                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pb-2">3. Antropometría</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div>
+                        <label for="height" class="block text-sm font-medium text-gray-700">Estatura (cm)</label>
+                        <input type="number" id="height" value="170" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="weight" class="block text-sm font-medium text-gray-700">Peso (kg)</label>
+                        <input type="number" id="weight" value="75" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="waist" class="block text-sm font-medium text-gray-700">Perímetro Cintura (cm)</label>
+                        <input type="number" id="waist" value="90" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="hip" class="block text-sm font-medium text-gray-700">Perímetro Cadera (cm)</label>
+                        <input type="number" id="hip" value="100" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                </div>
+
+                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pb-2">4. Parámetros Bioquímicos</h2>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div>
+                        <label for="glucose" class="block text-sm font-medium text-gray-700">Glucosa Ayunas (mg/dL)</label>
+                        <input type="number" id="glucose" value="90" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="hba1c" class="block text-sm font-medium text-gray-700">HbA1c (%) (Opcional)</label>
+                        <input type="number" step="0.1" id="hba1c" placeholder="5.7" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="total_chol" class="block text-sm font-medium text-gray-700">Colesterol Total (mg/dL)</label>
+                        <input type="number" id="total_chol" placeholder="180" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="hdl" class="block text-sm font-medium text-gray-700">Colesterol HDL (mg/dL)</label>
+                        <input type="number" id="hdl" value="45" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="ldl" class="block text-sm font-medium text-gray-700">Colesterol LDL (mg/dL)</label>
+                        <input type="number" id="ldl" placeholder="110" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="triglycerides" class="block text-sm font-medium text-gray-700">Triglicéridos (mg/dL)</label>
+                        <input type="number" id="triglycerides" value="140" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                </div>
+
+                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pb-2">5. Composición Corporal (Opcional, BIA)</h2>
+                <p class="text-sm text-gray-500 -mt-3 mb-3 italic">Llenar solo si tiene datos de una báscula de Bioimpedancia (BIA).</p>
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
+                    <div>
+                        <label for="bia_fat_p" class="block text-sm font-medium text-gray-700">% Grasa Corporal</label>
+                        <input type="number" step="0.1" id="bia_fat_p" placeholder="25.5" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="bia_muscle_p" class="block text-sm font-medium text-gray-700">% Músculo</label>
+                        <input type="number" step="0.1" id="bia_muscle_p" placeholder="34.0" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="bia_visceral_p" class="block text-sm font-medium text-gray-700">% Grasa Visceral</label>
+                        <input type="number" step="0.1" id="bia_visceral_p" placeholder="9" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="bia_water_p" class="block text-sm font-medium text-gray-700">% Agua</label>
+                        <input type="number" step="0.1" id="bia_water_p" placeholder="55.0" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="bia_metabolic_age" class="block text-sm font-medium text-gray-700">Edad Metabólica</label>
+                        <input type="number" id="bia_metabolic_age" placeholder="40" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                </div>
+
+                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pb-2">6. Estilo de Vida</h2>
+                <h3 class="text-xl font-semibold ipn-accent mb-3 border-b pb-1">6.1. Actividad Física</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div>
+                        <label for="activity_days" class="block text-sm font-medium text-gray-700">Días de ejercicio/semana</label>
+                        <select id="activity_days" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <option value="0">0 (Sedentario)</option>
+                            <option value="2">1-2 días</option>
+                            <option value="3.5">3-4 días</option>
+                            <option value="5">5 o más días</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="activity_duration" class="block text-sm font-medium text-gray-700">Duración promedio (min/día)</label>
+                        <input type="number" id="activity_duration" placeholder="30" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="activity_intensity" class="block text-sm font-medium text-gray-700">Intensidad Principal</label>
+                        <select id="activity_intensity" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <option value="light">Ligera (Caminar)</option>
+                            <option value="moderate">Moderada (Trotar, Bici)</option>
+                            <option value="vigorous">Vigorosa (Correr, HIIT)</option>
+                        </select>
+                    </div>
+                </div>
+                <h3 class="text-xl font-semibold ipn-accent mb-3 border-b pb-1">6.2. Tabaquismo</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div>
+                        <label for="smoker_status" class="block text-sm font-medium text-gray-700">Estado</label>
+                        <select id="smoker_status" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <option value="never">Nunca he fumado</option>
+                            <option value="ex_smoker">Ex-fumador</option>
+                            <option value="active">Fumador Actual</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="smoker_passive" class="block text-sm font-medium text-gray-700">Fumador Pasivo</label>
+                        <select id="smoker_passive" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <option value="no">No</option>
+                            <option value="yes">Sí (convive con fumadores)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="smoker_years" class="block text-sm font-medium text-gray-700">Años fumando (si aplica)</label>
+                        <input type="number" id="smoker_years" placeholder="10" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="smoker_daily_avg" class="block text-sm font-medium text-gray-700">Cigarrillos/día (promedio)</label>
+                        <input type="number" id="smoker_daily_avg" placeholder="5" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                </div>
+                <h3 class="text-xl font-semibold ipn-accent mb-3 border-b pb-1">6.3. Consumo de Alcohol</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                    <div>
+                        <label for="alcohol_freq" class="block text-sm font-medium text-gray-700">Frecuencia de consumo</label>
+                        <select id="alcohol_freq" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <option value="none">Nunca o casi nunca</option>
+                            <option value="monthly">1-3 veces al mes</option>
+                            <option value="weekly">1-2 veces por semana</option>
+                            <option value="daily">Casi diario</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="alcohol_dose" class="block text-sm font-medium text-gray-700">Dosis (Bebidas estándar/día)</label>
+                        <input type="number" id="alcohol_dose" placeholder="2" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                    </div>
+                    <div>
+                        <label for="alcohol_type" class="block text-sm font-medium text-gray-700">Tipo de alcohol principal</label>
+                        <select id="alcohol_type" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <option value="beer">Cerveza</option>
+                            <option value="wine">Vino</option>
+                            <option value="spirit">Destilados (Tequila, Ron, etc.)</option>
+                            <option value="mixed">Combinado</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pb-2">7. Diagnósticos y Tratamiento</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
+                    <div class="p-4 border rounded-xl bg-gray-50 shadow-inner">
+                        <label class="block text-base font-semibold text-gray-700 mb-2">Diabetes Mellitus (DM)</label>
+                        <div class="mt-2 space-y-2 text-sm">
+                            <div>
+                                <input type="radio" id="dm_no" name="dm_status" value="no" checked> <label for="dm_no">No diagnosticado</label>
+                            </div>
+                            <div>
+                                <input type="radio" id="dm_yes" name="dm_status" value="yes"> <label for="dm_yes">Sí diagnosticado</label>
+                            </div>
+                            <label for="med_dm" class="block text-sm font-medium text-gray-700 mt-3">¿Toma medicación para DM?</label>
+                            <select id="med_dm" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                                <option value="no">No</option>
+                                <option value="yes_freq">Sí, frecuentemente</option>
+                                <option value="yes_rare">Sí, ocasionalmente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="p-4 border rounded-xl bg-gray-50 shadow-inner">
+                        <label class="block text-base font-semibold text-gray-700 mb-2">Hipertensión (HTA)</label>
+                        <div class="mt-2 space-y-2 text-sm">
+                            <div>
+                                <input type="radio" id="hta_no" name="hta_status" value="no" checked> <label for="hta_no">No diagnosticado</label>
+                            </div>
+                            <div>
+                                <input type="radio" id="hta_yes" name="hta_status" value="yes"> <label for="hta_yes">Sí diagnosticado</label>
+                            </div>
+                            <label for="med_hta" class="block text-sm font-medium text-gray-700 mt-3">¿Toma medicación para HTA?</label>
+                            <select id="med_hta" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                                <option value="no">No</option>
+                                <option value="yes_freq">Sí, frecuentemente</option>
+                                <option value="yes_rare">Sí, ocasionalmente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="p-4 border rounded-xl bg-gray-50 shadow-inner">
+                        <label class="block text-base font-semibold text-gray-700 mb-2">Dislipidemia (Colesterol/TG altos)</label>
+                        <div class="mt-2 space-y-2 text-sm">
+                            <div>
+                                <input type="radio" id="dlp_no" name="dlp_status" value="no" checked> <label for="dlp_no">No diagnosticado</label>
+                            </div>
+                            <div>
+                                <input type="radio" id="dlp_yes" name="dlp_status" value="yes"> <label for="dlp_yes">Sí diagnosticado</label>
+                            </div>
+                            <label for="med_dlp" class="block text-sm font-medium text-gray-700 mt-3">¿Toma Estatinas o Fibratos?</label>
+                            <select id="med_dlp" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                                <option value="no">No</option>
+                                <option value="yes_freq">Sí, frecuentemente</option>
+                                <option value="yes_rare">Sí, ocasionalmente</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pb-2">8. Historial Cardiovascular</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div>
+                        <label for="history_mi" class="block text-sm font-medium text-gray-700">¿Ha sido diagnosticado con un Infarto?</label>
+                        <select id="history_mi" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <option value="no">No</option>
+                            <option value="yes">Sí</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="history_angina" class="block text-sm font-medium text-gray-700">¿Ha sentido dolor opresivo en el pecho al esforzarse (Angina)?</label>
+                        <select id="history_angina" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <option value="no">No</option>
+                            <option value="yes">Sí</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="family_history" class="block text-sm font-medium text-gray-700">Antecedentes Familiares (Padres/Hermanos con ECV o DM)</label>
+                        <select id="family_history" class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm p-2 border">
+                            <option value="no">No</option>
+                            <option value="yes">Sí</option>
+                        </select>
+                    </div>
+                </div>
+
+                <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pt-4 pb-2">9. Consentimiento de Datos</h2>
+                
+                <div class="p-4 border border-red-300 bg-red-50 rounded-xl mb-6 text-gray-700">
+                    <p class="font-bold text-base mb-2 ipn-accent">Aviso de Privacidad Simplificado</p>
+                    <p class="text-sm">
+                        Los datos proporcionados (incluyendo datos de salud sensibles) serán utilizados 
+                        <strong>única y exclusivamente</strong> para la 
+                        <strong>Validación y Análisis Estadístico</strong> del proyecto de tesis del responsable 
+                        (<strong>Edsel Yahvi Méndez H.</strong>) y el 
+                        <strong>Laboratorio LICAM/IPN</strong>.
+                    </p>
+                    <p class="text-sm mt-1">
+                        Los resultados serán publicados <strong>solo a nivel agregado y anonimizado</strong>. 
+                        Sus datos no serán usados para fines de marketing ni compartidos con terceros. 
+                        Al aceptar, otorga su consentimiento expreso.
+                    </p>
+                </div>
+
+                <div class="flex items-center space-x-3 mb-6">
+                    <input type="checkbox" id="accept-terms-final" class="h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                    <label for="accept-terms-final" class="text-base font-semibold text-gray-800 cursor-pointer">
+                        He leído y acepto el Aviso de Privacidad y el uso de mis datos para fines estadísticos.
+                    </label>
+                </div>
+                <div id="sheet-status" class="text-center p-3 mt-4 rounded-lg text-sm hidden"></div>
+
+                <button id="calculate-button" disabled class="w-full mt-2 py-3 px-6 rounded-xl text-lg font-bold text-white ipn-bg ipn-bg-dark shadow-glow opacity-50 cursor-not-allowed transition duration-150 ease-in-out">
+                    Calcular Riesgo Cardiovascular Integral
+                </button>
+            </div>
+        </form>
+
+        <div id="results-section" class="hidden mt-10">
+            <h2 class="text-3xl font-bold ipn-accent mb-6 border-b-4 ipn-border pb-3">4. Resultados y Plan de Acción</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+
+                <div class="p-6 rounded-xl border-2 space-y-6 shadow-lg">
+                    <h3 class="text-xl font-bold mb-3 ipn-accent border-b pb-2">Perfil de Riesgo Global (Score)</h3>
+                    <div id="global-risk-result" class="text-center p-6 rounded-xl font-bold text-3xl shadow-md transition duration-300"></div>
+                    
+                    <div>
+                        <h4 class="font-bold text-gray-700 mt-4 mb-2">Métricas Antropométricas:</h4>
+                        <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                            <li><span class="font-medium">Edad:</span> <span id="res-age"></span> años</li>
+                            <li><span class="font-medium">IMC:</span> <span id="res-bmi-val"></span> <span id="res-bmi-class" class="font-bold"></span></li>
+                            <li><span class="font-medium">Índice Cintura-Cadera (ICC):</span> <span id="res-icc-val"></span> <span id="res-icc-class" class="font-bold"></span></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold text-gray-700 mt-4 mb-2">Métricas Bioquímicas (Índices):</h4>
+                        <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                            <li><span class="font-medium">Índice TG/HDL:</span> <span id="res-tg-hdl-val"></span> <span id="res-tg-hdl-class" class="font-bold"></span></li>
+                            <li><span class="font-medium">Índice Col Total/HDL:</span> <span id="res-chol-hdl-val"></span> <span id="res-chol-hdl-class" class="font-bold"></span></li>
+                            <li><span class="font-medium">MASLD (FLI Score):</span> <span id="res-fli-val"></span> <span id="res-fli-class" class="font-bold"></span></li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h4 class="font-bold text-gray-700 mt-4 mb-2">Estilo de Vida y Fuerza:</h4>
+                        <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                            <li><span class="font-medium">Índice Tabáquico (IPA):</span> <span id="res-ipa-val"></span> <span id="res-ipa-class" class="font-bold"></span></li>
+                            <li><span class="font-medium">Actividad Física:</span> <span id="res-activity-class" class="font-bold"></span></li>
+                            <li><span class="font-medium">Fuerza de Agarre:</span> <span id="res-grip-class" class="font-bold"></span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="space-y-6">
+                    <div class="p-6 rounded-xl border-2 bg-gray-50 shadow-md">
+                        <h3 class="text-xl font-bold ipn-accent mb-3 border-b pb-2">Factores Clave de Riesgo</h3>
+                        <ul id="risk-factors-list" class="space-y-2 text-sm text-gray-700">
+                            </ul>
+                    </div>
+
+                    <div class="p-6 rounded-xl border-2 border-green-600 bg-green-50 shadow-md">
+                        <h3 class="text-2xl font-bold mb-4 text-green-700">Plan de Acción Personalizado</h3>
+                        <ul id="recommendations-list" class="space-y-3 text-gray-800 list-disc ml-5 text-sm">
+                            </ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-8 no-print">
+                <button id="print-button" class="w-full py-3 px-6 rounded-xl shadow-md text-lg font-bold text-white bg-blue-600 hover:bg-blue-700 transition duration-150 ease-in-out">
+                    🖨️ Imprimir Reporte (PDF)
+                </button>
+            </div>
+
+            <div class="mt-8 text-center border-t pt-4">
+                <p class="text-xs text-gray-500 italic">**Nota Importante:** Esta herramienta es parte de un proyecto de tesis y no sustituye la evaluación médica profesional. Consulte a su médico para un diagnóstico y tratamiento precisos.</p>
+            </div>
+        </div>
+
+        <div id="project-info" class="p-4 bg-gray-50 rounded-lg text-sm no-print mt-8">
+             <h3 class="font-bold text-lg ipn-accent mb-2 border-b pb-1">Información del Proyecto y Colaboradores</h3>
+             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div>
+                     <p class="font-semibold text-gray-700">Presenta y Asesoría:</p>
+                     <p class="text-gray-600"><strong>Edsel Yahvi Méndez Hernández</strong> (Tesista)</p>
+                     <p class="text-gray-600">Asesora Externa: Dra. Nayelli Nájera García</p>
+                     <p class="text-gray-600">Asesor Interno (Docente): Dr. Bustos García Juan Roberto Israel</p>
+                     <p class="font-semibold text-gray-700 mt-2">Institución:</p>
+                     <p class="text-gray-600">
+                         <a href="https://www.esm.ipn.mx/" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
+                              Escuela Superior de Medicina (ESM) - IPN
+                         </a>
+                     </p>
+                 </div>
+                 <div>
+                     <p class="font-semibold text-gray-700">Laboratorio Colaborador (LICAM):</p>
+                     <p class="text-gray-600">Investigación Integral Cardiometabólica (IPN)</p>
+                     
+                     <p class="font-semibold text-gray-700 mt-2">Contacto y Redes:</p>
+                     <p class="text-gray-600">
+                         <span class="font-medium">Correo:</span> nnajerag@ipn.mx
+                     </p>
+                     <p class="text-gray-600">
+                         <span class="font-medium">Teléfono:</span> 55 5729 6300 ext 62820
+                     </p>
+                     <p class="text-gray-600 mt-2">
+                         <a href="cemiztli.wixsite.com/cardiometabolismo" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
+                              Website
+                         </a> |
+                         <a href="https://www.facebook.com/licam.ipn" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
+                             Facebook
+                         </a> |
+                         <a href="https://www.instagram.com/ipn_licam_lab" target="_blank" class="text-pink-600 hover:text-pink-800 font-semibold underline">
+                             Instagram
+                         </a>
+                     </p>
+                 </div>
+             </div>
+         </div>
     </div>
 
+    <button type="button" id="reset-button" class="mt-4 py-2 px-4 border ipn-border rounded-lg shadow-sm text-sm font-medium ipn-accent bg-white hover:bg-red-50 transition duration-150 ease-in-out fixed top-8 right-8 hidden no-print z-30">
+        &larr; Calcular Nuevo
+    </button>
 
 
     <script>
-
-        // --- DATA & STATE MANAGEMENT ---
-
-        const ATOMIC_WEIGHTS = { // Simplified list
-
-            'H': 1.008, 'C': 12.011, 'N': 14.007, 'O': 15.999, 'Na': 22.990, 'Mg': 24.305, 
-
-            'P': 30.974, 'S': 32.06, 'Cl': 35.45, 'K': 39.098, 'Ca': 40.078, 'Fe': 55.845,
-
-             // Add more elements as needed by users
-
-        };
-
-
-
-        const CONVERSION_FACTORS = {
-
-            'mass': { 'kg': 1000, 'g': 1, 'mg': 1e-3, 'µg': 1e-6, 'ng': 1e-9, 'pg': 1e-12 },
-
-            'volume': { 'L': 1, 'mL': 1e-3, 'µL': 1e-6, 'nL': 1e-9 },
-
-            'concentration': { 'M': 1, 'mM': 1e-3, 'µM': 1e-6, 'nM': 1e-9 },
-
-            'length': { 'm': 1, 'cm': 1e-2, 'mm': 1e-3},
-
-            'force': { 'N': 1, 'gf': 9.80665e-3 }, // gf: gram-force
-
-            'pressure': { 'Pa': 1, 'mmHg': 133.322 },
-
-             // Add other relevant factors like glucose units if needed (mg/dL vs mmol/L)
-
-        };
-
+        // =======================================================
+        // === LÓGICA JAVASCRIPT DE LA CALCULADORA ================
+        // =======================================================
         
+        // --- CONFIGURACIÓN DE INTEGRACIÓN CON GOOGLE SHEETS (IMPORTANTE) ---
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbweuEciVBAMuQgFMJe6HQrH4Q3v4aAKyhlZUr45lAIiZCseb095Hy8ljd2NDOvv42ODIw/exec";
+        
+        // --- CONSTANTES GLOBALES Y PUNTOS DE CORTE (Basados en IMSS y Guías) ---
+        const CONSTANTS = {
+            IMC: { NORMAL: 25, SOBREPESO: 30, OBESIDAD_I: 35 },
+            GLUCOSA: { NORMAL: 100, PREDIABETES: 126 },
+            HBA1C: { NORMAL: 5.7, PREDIABETES: 6.5 }, 
+            TRIGLICERIDOS: { NORMAL: 150, LIMITE: 200 },
+            COLESTEROL_TOTAL: { NORMAL: 200, LIMITE: 240 },
+            HDL_HOMBRES: { NORMAL: 40 }, 
+            HDL_MUJERES: { NORMAL: 50 }, 
+            LDL: { NORMAL: 100, LIMITE: 130, ALTO: 160 },
+            CINTURA_HOMBRES: { NORMAL: 90 }, 
+            CINTURA_MUJERES: { NORMAL: 80 }, 
+            ICC_HOMBRES: { RIESGO_ALTO: 0.95 }, 
+            ICC_MUJERES: { RIESGO_ALTO: 0.85 }, 
+            INDICE_TG_HDL: { ALTO_RIESGO: 3.5 }, 
+            INDICE_COL_HDL: { ALTO_RIESGO: 5.0 }, 
+            IPA: { RIESGO_LEVE: 10 },
+            FLI_MASLD: { BAJO: 30, ALTO: 60 }
+        };
 
-        let wellData = {}; 
-
-        let selectedWells = new Set();
-
-        let variableCounter = 0;
-
-        let runningTimers = {};
-
-        let animalModels = {}; // Structure: { 'modelId': { data: [], ... }, ... }
-
-        let currentEditingModelId = null; // For the data entry modal
-
-
-
-        // --- TABS & NAVIGATION ---
-
-        function changeTab(tabName) {
-
-            const contents = ['planner', 'models', 'protocols', 'report', 'calculators', 'guide', 'about']; // Added 'protocols'
-
-            contents.forEach(content => {
-
-                const el = document.getElementById(`content-${content}`);
-
-                const tab = document.getElementById(`tab-${content}`);
-
-                if (el) el.style.display = content === tabName ? 'block' : 'none';
-
-                if (tab) tab.classList.toggle('active', content === tabName);
-
-            });
-
-             if (tabName === 'models') {
-
-                renderAnimalModels(); // Ensure models are displayed when tab is selected
-
+        // --- TABLA DE DINAMOMETRÍA (P10) ---
+        const DYNAMOMETRY_P10 = {
+            hombres: {
+                "20-29": 33.9, "30-39": 36.6, "40-49": 34.3, "50-59": 30.2, "60-69": 26.5, "70-99": 22.8, 
+            },
+            mujeres: {
+                "20-29": 19.5, "30-39": 20.7, "40-49": 19.8, "50-59": 16.6, "60-69": 19.6, "70-99": 13.0, 
             }
+        };
 
-        }
+        // ====================================================================
+        // === FUNCIONES DE LÓGICA DE CÁLCULO ==================================
+        // ====================================================================
 
-
-
-        // --- QUICK CALCULATORS ---
-
-        function parseFormula(formula) {
-
-            // Basic parsing, can be improved for complex cases like hydrates
-
-            const regex = /([A-Z][a-z]*)(\d*)|(\()|(\))(\d*)/g;
-
-            let match;
-
-            const stack = [{}]; // Stack to handle parentheses
-
-            while ((match = regex.exec(formula))) {
-
-                const [, element, countStr, openParen, closeParen, parenCountStr] = match;
-
-                const count = countStr ? parseInt(countStr) : 1;
-
-                const parenCount = parenCountStr ? parseInt(parenCountStr) : 1;
-
-
-
-                if (element) { // Found an element
-
-                    const currentGroup = stack[stack.length - 1];
-
-                    currentGroup[element] = (currentGroup[element] || 0) + count;
-
-                } else if (openParen) { // Start of a group
-
-                    stack.push({});
-
-                } else if (closeParen && stack.length > 1) { // End of a group
-
-                    const completedGroup = stack.pop();
-
-                    const currentGroup = stack[stack.length - 1];
-
-                    // Add counts from completed group to current group, multiplied by parenthesis count
-
-                    for (const el in completedGroup) {
-
-                        currentGroup[el] = (currentGroup[el] || 0) + completedGroup[el] * parenCount;
-
-                    }
-
-                }
-
-            }
-
-            if (stack.length !== 1) { // Error handling for mismatched parentheses
-
-                throw new Error("Paréntesis no balanceados en la fórmula.");
-
-            }
-
-            return stack[0]; // The final counts of each element
-
-        }
-
-
-
-
-
-        function calculateMolarMass() {
-
-            const formula = document.getElementById('chem-formula').value.replace(/\s+/g, ''); // Remove spaces
-
-            const resultDiv = document.getElementById('molar-mass-result');
-
-            if (!formula) {
-
-                resultDiv.innerHTML = `<span class="text-red-500">Por favor, introduce una fórmula.</span>`;
-
+        async function calculateRisk_v2() {
+            const validationDiv = document.getElementById('validation-message');
+            validationDiv.classList.add('hidden');
+            document.getElementById('sheet-status').classList.add('hidden');
+            
+            const inputs = getUserInputs_v2();
+            if (!inputs) {
+                validationDiv.textContent = "⚠️ Por favor, complete todos los campos obligatorios (Sección 1-4) con valores numéricos válidos (ej: edad, peso, estatura, glucosa, PAS/PAD).";
+                validationDiv.classList.remove('hidden');
                 return;
-
             }
 
+            const metrics = calculateMetrics(inputs);
+            const healthStatus = checkComorbidities(inputs);
+            const riskProfile = calculateHeuristicScore_v2(inputs, metrics, healthStatus);
+            
+            await sendDataToSheets(inputs, metrics, riskProfile);
+            
+            generateResults_v2(inputs, metrics, riskProfile);
+            
+            window.lastResultData_v2 = { inputs, metrics, riskProfile };
+
+            // Ocultar el formulario y mostrar los resultados (Flujo Normal)
+            document.getElementById('input-form').classList.add('hidden'); 
+            document.getElementById('results-section').classList.remove('hidden');
+            document.getElementById('reset-button').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        async function sendDataToSheets(inputs, metrics, riskProfile) {
+            const statusDiv = document.getElementById('sheet-status');
+            statusDiv.textContent = "Enviando datos a la base de datos (Google Sheets)...";
+            statusDiv.className = "text-center p-3 mt-4 rounded-lg text-sm bg-blue-100 text-blue-800";
+            statusDiv.classList.remove('hidden');
+            
+            const dataToSend = {
+                // ... (Datos a enviar a Sheets - igual a tu lógica anterior)
+                timestamp: new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
+                fullName: inputs.full_name || 'Sin nombre',
+                email: inputs.email || '',
+                gender: inputs.gender === 'male' ? 'Masculino' : 'Femenino',
+                age: inputs.age,
+                paSistolica: inputs.pa_used.s,
+                paDiastolica: inputs.pa_used.d,
+                paSource: inputs.pa_used.source,
+                hr: inputs.hr, rr: inputs.rr, weight: inputs.weight, height_cm: inputs.height_cm, waist: inputs.waist, hip: inputs.hip,
+                bmi: metrics.bmi, bmiClass: metrics.bmi_class, icc: metrics.icc, iccClass: metrics.icc_class, fliScore: metrics.fli_score, fliClass: metrics.fli_class, gripFactorText: riskProfile.grip_factor_text,
+                glucose: inputs.glucose, hba1c: inputs.hba1c, totalChol: inputs.total_chol, hdl: inputs.hdl, ldl: inputs.ldl, triglycerides: inputs.triglycerides, tgHdlIndex: metrics.tg_hdl, cholHdlIndex: metrics.chol_hdl,
+                activity: `${inputs.activity_days} días/${inputs.activity_duration} min (${inputs.activity_intensity})`,
+                smokerStatus: inputs.smoker_status, ipaScore: metrics.ipa, alcoholFreq: inputs.alcohol_freq,
+                dmStatus: inputs.dm_status, medDm: inputs.med_dm, htaStatus: inputs.hta_status, medHta: inputs.med_hta, dlpStatus: inputs.dlp_status, medDlp: inputs.med_dlp, historyMI: inputs.history_mi, familyHistory: inputs.family_history,
+                riskScore: riskProfile.score, riskLevel: riskProfile.level, riskFactorsList: riskProfile.factors.map(f => f.text).join(' | '),
+            };
+            
             try {
-
-                const composition = parseFormula(formula);
-
-                let totalMass = 0;
-
-                let breakdown = [];
-
-                // Calculate total mass and create breakdown string
-
-                for (const element in composition) {
-
-                    if (!ATOMIC_WEIGHTS[element]) {
-
-                        throw new Error(`Elemento desconocido: ${element}`);
-
-                    }
-
-                    const mass = ATOMIC_WEIGHTS[element] * composition[element];
-
-                    totalMass += mass;
-
-                    breakdown.push(`<b>${element}</b>: ${composition[element]} x ${ATOMIC_WEIGHTS[element]} = ${mass.toFixed(4)}`);
-
-                }
-
-                // Display result
-
-                resultDiv.innerHTML = `<b>Masa Molar Total: <span class="text-blue-600">${totalMass.toFixed(4)} g/mol</span></b><br><small>${breakdown.join('<br>')}</small>`;
-
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', 
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dataToSend)
+                });
+                
+                statusDiv.textContent = "✅ Datos guardados en Sheets con éxito.";
+                statusDiv.className = "text-center p-3 mt-4 rounded-lg text-sm bg-green-100 text-green-800";
+                
             } catch (error) {
-
-                // Display error message
-
-                resultDiv.innerHTML = `<span class="text-red-500">Error: ${error.message}</span>`;
-
+                console.error("Error al enviar datos a Google Sheets. La aplicación local sigue funcionando.", error);
+                statusDiv.textContent = "❌ Error al guardar datos en Sheets. Revise la consola. El cálculo local se completó.";
+                statusDiv.className = "text-center p-3 mt-4 rounded-lg text-sm bg-red-100 text-red-800";
             }
-
         }
 
-        
+        function getUserInputs_v2() {
+            const getVal = (id) => document.getElementById(id)?.value || null;
+            const getNum = (id) => parseFloat(document.getElementById(id)?.value) || null;
+            const getRad = (name) => document.querySelector(`input[name="${name}"]:checked`)?.value || "no";
 
-        function getUnitType(unit) {
+            const getAge = (birthDateString) => {
+                if (!birthDateString) return null;
+                const today = new Date();
+                const birthDate = new Date(birthDateString);
+                let age = today.getFullYear() - birthDate.getFullYear();
+                const m = today.getMonth() - birthDate.getMonth();
+                if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) { age--; }
+                return age;
+            };
 
-             if (!unit) return null;
+            const inputs = {
+                // Sección 1
+                full_name: getVal('full_name'),
+                birth_date: getVal('birth_date'),
+                age: getAge(getVal('birth_date')),
+                gender: getVal('gender'),
+                email: getVal('email'),
+                // Sección 2
+                hr: getNum('hr'), rr: getNum('rr'), grip_right: getNum('grip_right'), grip_left: getNum('grip_left'),
+                pa_used: getAverageBP(getNum('pas'), getNum('pad')),
+                // Sección 3
+                height_cm: getNum('height'), weight: getNum('weight'), waist: getNum('waist'), hip: getNum('hip'),
+                // Sección 4
+                glucose: getNum('glucose'), hba1c: getNum('hba1c'), total_chol: getNum('total_chol'), hdl: getNum('hdl'), ldl: getNum('ldl'), triglycerides: getNum('triglycerides'),
+                // Sección 6.1 (Actividad)
+                activity_days: getNum('activity_days'), activity_duration: getNum('activity_duration'), activity_intensity: getVal('activity_intensity'),
+                // Sección 6.2 (Tabaquismo)
+                smoker_status: getVal('smoker_status'), smoker_passive: getVal('smoker_passive'), smoker_years: getNum('smoker_years'), smoker_daily_avg: getNum('smoker_daily_avg'),
+                // Sección 6.3 (Alcohol)
+                alcohol_freq: getVal('alcohol_freq'), alcohol_dose: getNum('alcohol_dose'),
+                // Sección 7 (Comorbilidades)
+                dm_status: getRad('dm_status'), med_dm: getVal('med_dm'), hta_status: getRad('hta_status'), med_hta: getVal('med_hta'), dlp_status: getRad('dlp_status'), med_dlp: getVal('med_dlp'),
+                // Sección 8 (Historial)
+                history_mi: getVal('history_mi'), history_angina: getVal('history_angina'), family_history: getVal('family_history')
+            };
 
-             for (const type in CONVERSION_FACTORS) {
-
-                 if (CONVERSION_FACTORS[type][unit]) {
-
-                     return type;
-
-                 }
-
-             }
-
-            // Check for combined concentration units (mass/volume)
-
-            if (unit.includes('/')) {
-
-                const parts = unit.split('/');
-
-                if (parts.length === 2 && CONVERSION_FACTORS.mass[parts[0]] && CONVERSION_FACTORS.volume[parts[1]]) {
-
-                    return 'combined_concentration';
-
-                }
-
+            // Validación básica (Campos obligatorios - Secciones 1 a 4)
+            if (!inputs.age || inputs.age < 0 || !inputs.height_cm || !inputs.weight || !inputs.waist || !inputs.hip || !inputs.glucose || !inputs.total_chol || !inputs.hdl || !inputs.triglycerides || !inputs.pa_used) {
+                return null;
             }
-
-            return null; // Unit not recognized
-
-        }
-
-
-
-        // Converts value FROM a unit TO grams (for mass) or liters (for volume) or moles/L (for molar concentration)
-
-        function convertToBaseUnit(value, fromUnit) {
-
-            const type = getUnitType(fromUnit);
-
-            if (!type || isNaN(value)) return NaN;
-
-
-
-            if (type === 'combined_concentration') {
-
-                 const [massUnit, volUnit] = fromUnit.split('/');
-
-                 // Convert mass to grams and volume to Liters to get g/L
-
-                 const valueInG = value * (CONVERSION_FACTORS.mass[massUnit] || NaN);
-
-                 const volumeInL = 1 * (CONVERSION_FACTORS.volume[volUnit] || NaN); // Assuming per 1 unit of volume
-
-                 if (isNaN(valueInG) || isNaN(volumeInL) || volumeInL === 0) return NaN;
-
-                 return valueInG / volumeInL; // Base unit: g/L
-
-            } else if (CONVERSION_FACTORS[type]) {
-
-                // For simple types (mass, volume, concentration), multiply by factor to get base
-
-                 // Base for mass is g, volume is L, concentration is M
-
-                return value * (CONVERSION_FACTORS[type][fromUnit] || NaN);
-
-            }
-
-            return NaN; // Should not happen if getUnitType is correct
-
-        }
-
-
-
-        // Converts value FROM a base unit (g, L, M, g/L) TO a target unit
-
-        function convertFromBaseUnit(value, toUnit) {
-
-            const type = getUnitType(toUnit);
-
-             if (!type || isNaN(value)) return NaN;
-
-
-
-             if (type === 'combined_concentration') {
-
-                 const [massUnit, volUnit] = toUnit.split('/');
-
-                 // Value is assumed to be in g/L
-
-                 const targetMassFactor = CONVERSION_FACTORS.mass[massUnit];
-
-                 const targetVolFactor = CONVERSION_FACTORS.volume[volUnit];
-
-                 if (!targetMassFactor || !targetVolFactor) return NaN;
-
-                  // Convert g/L to targetMassUnit / targetVolUnit
-
-                 // (value g / 1 L) * (1 L / targetVolFactor targetVolUnits) / (1 g / targetMassFactor targetMassUnits)
-
-                 // = value * targetMassFactor / targetVolFactor
-
-                 return value * targetMassFactor / targetVolFactor;
-
-             } else if (CONVERSION_FACTORS[type]) {
-
-                  // For simple types, divide by factor to get value in target unit
-
-                 const factor = CONVERSION_FACTORS[type][toUnit];
-
-                 if (!factor) return NaN;
-
-                 return value / factor;
-
-             }
-
-              return NaN; // Should not happen
-
-        }
-
-
-
-        function _pureConvertUnits(value, from, to) {
-
-            if (isNaN(value) || !from || !to) return NaN;
-
-            if (from === to) return value;
-
-
-
-            const fromType = getUnitType(from);
-
-            const toType = getUnitType(to);
-
-
-
-            // Allow conversion between Molar and Mass/Volume ONLY IF molar mass is known (future enhancement)
-
-            // For now, only allow conversion within the same category
-
-             if (!fromType || !toType || fromType !== toType) {
-
-                 // Special case: Allow g/L (base for combined) <-> M (base for molar) if molar mass known
-
-                 // if ((fromType === 'combined_concentration' && toType === 'concentration') || (fromType === 'concentration' && toType === 'combined_concentration')) {
-
-                 //    // Requires molar mass - implement later if needed
-
-                 //    return NaN;
-
-                 // }
-
-                 return NaN; // Cannot convert between different types directly (e.g., g to L)
-
-             }
-
             
-
-            // Convert 'from' unit to base unit, then base unit to 'to' unit
-
-            const baseValue = convertToBaseUnit(value, from);
-
-            if (isNaN(baseValue)) return NaN;
-
-            const finalValue = convertFromBaseUnit(baseValue, to);
-
-             
-
-            return finalValue;
-
+            return inputs;
         }
 
-
-
-
-
-        function convertUnits() {
-
-            const value = parseFloat(document.getElementById('uc-value').value);
-
-            const from = document.getElementById('uc-from').value;
-
-            const to = document.getElementById('uc-to').value;
-
-            const resultDiv = document.getElementById('uc-result');
-
-
-
-            const finalValue = _pureConvertUnits(value, from, to);
-
+        function getAverageBP(pas, pad) {
+            const bp_readings = [];
             
+            if (pas && pad) { bp_readings.push({ s: pas, d: pad }); } else { return null; }
+            const s2 = parseFloat(document.getElementById('pa_d2_s').value);
+            const d2 = parseFloat(document.getElementById('pa_d2_d').value);
+            if (!isNaN(s2) && !isNaN(d2) && s2 > 0 && d2 > 0) bp_readings.push({ s: s2, d: d2 });
+            const s3 = parseFloat(document.getElementById('pa_d3_s').value);
+            const d3 = parseFloat(document.getElementById('pa_d3_d').value);
+            if (!isNaN(s3) && !isNaN(d3) && s3 > 0 && d3 > 0) bp_readings.push({ s: s3, d: d3 });
 
-            if (isNaN(finalValue)) {
+            const total_s = bp_readings.reduce((sum, reading) => sum + reading.s, 0);
+            const total_d = bp_readings.reduce((sum, reading) => sum + reading.d, 0);
+            
+            return {
+                s: Math.round(total_s / bp_readings.length),
+                d: Math.round(total_d / bp_readings.length),
+                source: bp_readings.length > 1 ? `Promedio de ${bp_readings.length} tomas` : "Toma única"
+            };
+        }
 
-                 resultDiv.innerHTML = `<span class="text-red-500">No se puede convertir entre estas unidades o tipos.</span>`;
+        function calculateMetrics(inputs) {
+            const metrics = {};
+            const { weight, height_cm, waist, hip, triglycerides, hdl, total_chol, smoker_status, smoker_daily_avg, smoker_years } = inputs;
 
+            // 1. IMC
+            const height_m = height_cm / 100;
+            metrics.bmi = parseFloat((weight / (height_m * height_m)).toFixed(1));
+            metrics.bmi_class = getBmiClass(metrics.bmi);
+
+            // 2. ICC
+            metrics.icc = parseFloat((waist / hip).toFixed(2));
+            metrics.icc_class = getIccClass(metrics.icc, inputs.gender);
+
+            // 3. Índice TG/HDL
+            metrics.tg_hdl = parseFloat((triglycerides / hdl).toFixed(2));
+            metrics.tg_hdl_class = metrics.tg_hdl >= CONSTANTS.INDICE_TG_HDL.ALTO_RIESGO ? "Alto Riesgo" : "Normal";
+
+            // 4. Índice Col Total/HDL
+            metrics.chol_hdl = parseFloat((total_chol / hdl).toFixed(2));
+            metrics.chol_hdl_class = metrics.chol_hdl >= CONSTANTS.INDICE_COL_HDL.ALTO_RIESGO ? "Alto Riesgo" : "Normal";
+
+            // 5. IPA
+            if (smoker_status === 'active' && smoker_daily_avg > 0 && smoker_years > 0) {
+                metrics.ipa = parseFloat(((smoker_daily_avg / 20) * smoker_years).toFixed(1));
+                metrics.ipa_class = metrics.ipa >= CONSTANTS.IPA.RIESGO_LEVE ? "Riesgo Elevado" : "Riesgo Bajo";
             } else {
-
-                 resultDiv.textContent = `${value} ${from} = ${finalValue.toExponential(4)} ${to}`;
-
+                metrics.ipa = 0;
+                metrics.ipa_class = "No aplica";
             }
 
-        }
-
-
-
-        function calculateDilution() {
-
-            const fields = {
-
-                c1: { val: parseFloat(document.getElementById('c1').value), unit: document.getElementById('c1-unit').value },
-
-                v1: { val: parseFloat(document.getElementById('v1').value), unit: document.getElementById('v1-unit').value },
-
-                c2: { val: parseFloat(document.getElementById('c2').value), unit: document.getElementById('c2-unit').value },
-
-                v2: { val: parseFloat(document.getElementById('v2').value), unit: document.getElementById('v2-unit').value },
-
-            };
-
-
-
-            const resultDiv = document.getElementById('dilution-result');
-
-            const emptyFields = Object.keys(fields).filter(k => isNaN(fields[k].val));
-
-
-
-            if (emptyFields.length !== 1) {
-
-                resultDiv.innerHTML = `<span class="text-red-500">Por favor, introduce exactamente 3 valores numéricos.</span>`;
-
-                return;
-
-            }
-
-
-
-            const missingVar = emptyFields[0];
-
-            let result;
-
-            let resultUnit;
-
-
-
-            try {
-
-                 // Convert C2 unit to C1 unit for calculation
-
-                const c2_conv = _pureConvertUnits(fields.c2.val, fields.c2.unit, fields.c1.unit);
-
-                // Convert V2 unit to V1 unit for calculation
-
-                const v2_conv = _pureConvertUnits(fields.v2.val, fields.v2.unit, fields.v1.unit);
-
-                
-
-                // Check if conversions were successful (important if converting between types like M and g/L was attempted and failed)
-
-                if (isNaN(c2_conv) && !isNaN(fields.c2.val)) throw new Error(`No se puede convertir la unidad de C2 (${fields.c2.unit}) a la de C1 (${fields.c1.unit}). Asegúrate que son del mismo tipo (ej. ambas molares o ambas masa/volumen).`);
-
-                if (isNaN(v2_conv) && !isNaN(fields.v2.val)) throw new Error(`No se puede convertir la unidad de V2 (${fields.v2.unit}) a la de V1 (${fields.v1.unit}).`);
-
-
-
-                let c1_val = fields.c1.val;
-
-                let v1_val = fields.v1.val;
-
-
-
-                // Apply C1V1 = C2V2 formula
-
-                switch (missingVar) {
-
-                    case 'c1': // Calculate C1 = (C2 * V2) / V1
-
-                        result = (c2_conv * v2_conv) / v1_val;
-
-                        resultUnit = fields.c1.unit; // Result is in C1's original unit
-
-                        break;
-
-                    case 'v1': // Calculate V1 = (C2 * V2) / C1
-
-                        result = (c2_conv * v2_conv) / c1_val;
-
-                        resultUnit = fields.v1.unit; // Result is in V1's original unit
-
-                        break;
-
-                    case 'c2': // Calculate C2 = (C1 * V1) / V2
-
-                         // Result is first calculated in C1's unit
-
-                        const c2_in_c1_units = (c1_val * v1_val) / v2_conv; 
-
-                         // Convert back to C2's desired unit
-
-                        result = _pureConvertUnits(c2_in_c1_units, fields.c1.unit, fields.c2.unit);
-
-                        resultUnit = fields.c2.unit;
-
-                        break;
-
-                    case 'v2': // Calculate V2 = (C1 * V1) / C2
-
-                        // Result is first calculated in V1's unit
-
-                        const v2_in_v1_units = (c1_val * v1_val) / c2_conv;
-
-                        // Convert back to V2's desired unit
-
-                        result = _pureConvertUnits(v2_in_v1_units, fields.v1.unit, fields.v2.unit);
-
-                        resultUnit = fields.v2.unit;
-
-                        break;
-
-                }
-
-
-
-                // Final check for calculation errors
-
-                if (isNaN(result) || !isFinite(result)) {
-
-                    throw new Error("El resultado es inválido. Revisa los valores y unidades.");
-
-                }
-
-
-
-                // Display the result
-
-                resultDiv.textContent = `Resultado: ${missingVar.toUpperCase()} = ${result.toPrecision(4)} ${resultUnit}`;
-
-
-
-            } catch (error) {
-
-                 // Display any errors that occurred
-
-                resultDiv.innerHTML = `<span class="text-red-500">Error: ${error.message}</span>`;
-
-            }
-
-        }
-
-
-
-        // --- PLATE PLANNER ---
-
-         function generatePlate(restoringData = null) {
-
-            const plateType = restoringData ? restoringData.plateType : document.getElementById('plate-type').value;
-
-            document.getElementById('plate-type').value = plateType; // Ensure dropdown matches
-
-            const layout = document.getElementById('plate-layout');
-
-            layout.innerHTML = ''; // Clear previous layout
-
+            // 6. FLI (Fatty Liver Index)
+            const ln_tg = Math.log(triglycerides);
+            const ln_waist = Math.log(waist);
+            const X = (0.953 * ln_tg) + (0.139 * metrics.bmi) + (0.718 * ln_waist) - 13.9;
+            metrics.fli_score = parseFloat(((Math.exp(X) / (1 + Math.exp(X))) * 100).toFixed(1));
+            metrics.fli_class = metrics.fli_score >= CONSTANTS.FLI_MASLD.ALTO ? "Alto Riesgo" : (metrics.fli_score >= CONSTANTS.FLI_MASLD.BAJO ? "Riesgo Moderado" : "Bajo Riesgo");
             
+            return metrics;
+        }
 
-            // Reset wellData only if not restoring from file
+        function getBmiClass(bmi) {
+            if (bmi < 18.5) return "Bajo Peso";
+            if (bmi < CONSTANTS.IMC.NORMAL) return "Normal";
+            if (bmi < CONSTANTS.IMC.SOBREPESO) return "Sobrepeso";
+            if (bmi < CONSTANTS.IMC.OBESIDAD_I) return "Obesidad Grado I";
+            return "Obesidad Grado II+";
+        }
+        function getIccClass(icc, gender) {
+            const cutoff = gender === 'male' ? CONSTANTS.ICC_HOMBRES.RIESGO_ALTO : CONSTANTS.ICC_MUJERES.RIESGO_ALTO;
+            return icc >= cutoff ? "Riesgo Cardiovascular Alto" : "Riesgo Normal";
+        }
 
-            if (!restoringData) {
+        function checkComorbidities(inputs) {
+            const status = { dm: "no", hta: "no", dlp: "no" };
+            if (inputs.dm_status === 'yes') { status.dm = "diagnosticada"; } else if (inputs.med_dm === 'yes_freq') { status.dm = "tratada_no_dx"; }
+            if (inputs.hta_status === 'yes') { status.hta = "diagnosticada"; } else if (inputs.med_hta === 'yes_freq') { status.hta = "tratada_no_dx"; }
+            if (inputs.dlp_status === 'yes') { status.dlp = "diagnosticada"; } else if (inputs.med_dlp === 'yes_freq') { status.dlp = "tratada_no_dx"; }
+            return status;
+        }
 
-                wellData = {};
+        function calculateHeuristicScore_v2(inputs, metrics, healthStatus) {
+            let score = 0;
+            const riskFactors = []; 
+            let gripFactor = { text: "Fuerza de Agarre No Medida", class: "risk-moderate" }; 
 
+            // A. Edad y Sexo (Base Risk)
+            if (inputs.age >= 45 && inputs.gender === 'male') { score += 10; } 
+            else if (inputs.age >= 55 && inputs.gender === 'female') { score += 10; }
+
+            // B. Historial Cardiovascular
+            if (inputs.history_mi === 'yes') { score += 50; riskFactors.push({ text: "Infarto Previo Diagnosticado", class: "risk-high" }); }
+            if (inputs.history_angina === 'yes') { score += 30; riskFactors.push({ text: "Síntomas de Angina de Pecho", class: "risk-high" }); }
+
+            // C. Comorbilidades
+            if (healthStatus.dm === 'diagnosticada') { score += 30; riskFactors.push({ text: "Diabetes Mellitus Diagnosticada", class: "risk-high" }); } 
+            else if (healthStatus.dm === 'tratada_no_dx' || (inputs.hba1c && inputs.hba1c >= CONSTANTS.HBA1C.PREDIABETES) || inputs.glucose >= CONSTANTS.GLUCOSA.PREDIABETES) { score += 20; riskFactors.push({ text: "Estado de Prediabetes o DM no controlada", class: "risk-high" }); }
+
+            if (healthStatus.hta === 'diagnosticada') { score += 25; riskFactors.push({ text: "Hipertensión Diagnosticada", class: "risk-high" }); } 
+            else if (healthStatus.hta === 'tratada_no_dx' || inputs.pa_used.s >= 140 || inputs.pa_used.d >= 90) { score += 20; riskFactors.push({ text: `Presión Arterial Elevada (${inputs.pa_used.s}/${inputs.pa_used.d} mmHg)`, class: "risk-high" }); } 
+            else if (inputs.pa_used.s >= 130 || inputs.pa_used.d >= 85) { score += 10; riskFactors.push({ text: `Presión Arterial Límite (${inputs.pa_used.s}/${inputs.pa_used.d} mmHg)`, class: "risk-moderate" }); }
+
+            // D. Parámetros Bioquímicos (Dislipidemia)
+            if (inputs.ldl) {
+                if (inputs.ldl >= CONSTANTS.LDL.ALTO) { score += 20; riskFactors.push({ text: `Colesterol LDL Muy Alto (>${CONSTANTS.LDL.ALTO})`, class: "risk-high" }); } 
+                else if (inputs.ldl >= CONSTANTS.LDL.LIMITE) { score += 10; riskFactors.push({ text: `Colesterol LDL Límite (>${CONSTANTS.LDL.LIMITE})`, class: "risk-moderate" }); }
             }
 
-            selectedWells.clear(); // Always clear selection on new/loaded plate
+            if (metrics.tg_hdl >= CONSTANTS.INDICE_TG_HDL.ALTO_RIESGO) { score += 15; riskFactors.push({ text: `Índice TG/HDL Elevado (>${CONSTANTS.INDICE_TG_HDL.ALTO_RIESGO})`, class: "risk-high" }); } 
+            else if (inputs.triglycerides >= CONSTANTS.TRIGLICERIDOS.LIMITE) { score += 5; riskFactors.push({ text: `Triglicéridos Límite (>${CONSTANTS.TRIGLICERIDOS.LIMITE})`, class: "risk-moderate" }); }
 
+            if (metrics.chol_hdl >= CONSTANTS.INDICE_COL_HDL.ALTO_RIESGO) { score += 10; riskFactors.push({ text: `Índice Col/HDL Elevado (>${CONSTANTS.INDICE_COL_HDL.ALTO_RIESGO})`, class: "risk-moderate" }); }
 
+            // E. Antropometría
+            if (inputs.age >= 18) {
+                if (metrics.bmi >= CONSTANTS.IMC.OBESIDAD_I) { score += 20; riskFactors.push({ text: `Obesidad General (IMC >${CONSTANTS.IMC.OBESIDAD_I})`, class: "risk-high" }); } 
+                else if (metrics.bmi >= CONSTANTS.IMC.SOBREPESO) { score += 10; riskFactors.push({ text: `Sobrepeso (IMC >${CONSTANTS.IMC.NORMAL})`, class: "risk-moderate" }); }
+            } 
+            if (metrics.icc_class === "Riesgo Cardiovascular Alto") { score += 15; riskFactors.push({ text: `Obesidad Abdominal (ICC Alto: ${metrics.icc})`, class: "risk-high" }); }
 
-            // Define plate dimensions based on type
+            // F. Dinamometría
+            const [newScore, dynFactor] = checkDynamometry(inputs, score);
+            if (dynFactor) { score = newScore; gripFactor = dynFactor; }
 
-            const plateConfigs = {
+            // G. Estilo de Vida
+            if (metrics.ipa >= CONSTANTS.IPA.RIESGO_LEVE) { score += 20; riskFactors.push({ text: `Tabaquismo Activo (IPA: ${metrics.ipa})`, class: "risk-high" }); } 
+            else if (inputs.smoker_passive === 'yes') { score += 5; riskFactors.push({ text: "Fumador Pasivo", class: "risk-moderate" }); }
+            const totalActivity = (inputs.activity_days * inputs.activity_duration) || 0;
+            if (totalActivity < 150 && inputs.activity_intensity !== 'vigorous') { score += 10; riskFactors.push({ text: "Sedentarismo (No cumple 150 min/sem)", class: "risk-moderate" }); }
+            if (inputs.alcohol_freq === 'daily' && inputs.alcohol_dose >= 2) { score += 10; riskFactors.push({ text: "Consumo de Alcohol de Riesgo", class: "risk-moderate" }); }
 
-                '6': { rows: 2, cols: 3 }, '12': { rows: 3, cols: 4 },
+            // H. Historial Familiar
+            if (inputs.family_history === 'yes') { score += 10; riskFactors.push({ text: "Antecedentes Familiares Positivos", class: "risk-moderate" }); }
 
-                '24': { rows: 4, cols: 6 }, '48': { rows: 6, cols: 8 },
+            // I. Riesgo Hepático (MASLD)
+            if (metrics.fli_class === "Alto Riesgo") { score += 10; riskFactors.push({ text: `Alto Riesgo de MASLD (Hígado Graso)`, class: "risk-high" }); }
 
-                '96': { rows: 8, cols: 12 },
+            // Clasificación Final
+            let riskLevel = "";
+            let riskClass = "";
+            if (score >= 100 || inputs.history_mi === 'yes' || inputs.history_angina === 'yes') { riskLevel = "MUY ALTO RIESGO"; riskClass = "risk-very-high"; } 
+            else if (score >= 60) { riskLevel = "ALTO RIESGO"; riskClass = "risk-high"; } 
+            else if (score >= 30) { riskLevel = "RIESGO MODERADO"; riskClass = "risk-moderate"; } 
+            else { riskLevel = "RIESGO BAJO"; riskClass = "risk-low"; }
 
+            return {
+                score: Math.round(score),
+                level: riskLevel,
+                css_class: riskClass,
+                factors: riskFactors,
+                grip_factor_text: gripFactor.text
             };
+        }
 
-            const config = plateConfigs[plateType];
+        function generateResults_v2(inputs, metrics, riskProfile) {
+            const riskDiv = document.getElementById('global-risk-result');
+            riskDiv.innerHTML = `${riskProfile.level} (Score: ${riskProfile.score})`;
+            riskDiv.className = `text-center p-6 rounded-xl font-bold text-3xl shadow-md transition duration-300 ${riskProfile.css_class}`;
 
-            // Apply CSS Grid layout based on dimensions
+            document.getElementById('res-age').textContent = inputs.age;
+            document.getElementById('res-bmi-val').textContent = metrics.bmi;
+            document.getElementById('res-bmi-class').textContent = `(${metrics.bmi_class})`;
+            document.getElementById('res-icc-val').textContent = metrics.icc;
+            document.getElementById('res-icc-class').textContent = `(${metrics.icc_class})`;
 
-            layout.style.gridTemplateColumns = `repeat(${config.cols}, minmax(0, 1fr))`;
+            document.getElementById('res-tg-hdl-val').textContent = metrics.tg_hdl;
+            document.getElementById('res-tg-hdl-class').textContent = `(${metrics.tg_hdl_class})`;
+            document.getElementById('res-chol-hdl-val').textContent = metrics.chol_hdl;
+            document.getElementById('res-chol-hdl-class').textContent = `(${metrics.chol_hdl_class})`;
+            
+            document.getElementById('res-fli-val').textContent = metrics.fli_score;
+            document.getElementById('res-fli-class').textContent = `(${metrics.fli_class})`;
 
-            layout.style.display = 'grid';
+            document.getElementById('res-ipa-val').textContent = metrics.ipa;
+            document.getElementById('res-ipa-class').textContent = `(${metrics.ipa_class})`;
+            
+            const totalActivity = (inputs.activity_days * inputs.activity_duration) || 0;
+            document.getElementById('res-activity-class').textContent = totalActivity >= 150 ? "Activo (Cumple meta)" : "Sedentario/Insuficiente";
+            
+            document.getElementById('res-grip-class').textContent = riskProfile.grip_factor_text;
 
-
-
-            // Create each well element
-
-            for (let r = 0; r < config.rows; r++) {
-
-                for (let c = 0; c < config.cols; c++) {
-
-                    const rowLabel = String.fromCharCode(65 + r); // A, B, C...
-
-                    const colLabel = c + 1; // 1, 2, 3...
-
-                    const wellId = `${rowLabel}${colLabel}`; // e.g., A1, B12
-
+            // 3. Llenar Lista de Factores de Riesgo
+            const factorsList = document.getElementById('risk-factors-list');
+            factorsList.innerHTML = ""; 
+            if (riskProfile.factors.length === 0) {
+                factorsList.innerHTML = '<li class="text-green-600">¡Felicidades! No se detectaron factores de riesgo mayores.</li>';
+            } else {
+                riskProfile.factors.forEach(factor => {
+                    let colorClass = "text-gray-700";
+                    if (factor.class === 'risk-high' || factor.class === 'risk-very-high') colorClass = "text-red-700 font-bold";
+                    if (factor.class === 'risk-moderate') colorClass = "text-yellow-700 font-semibold";
+                    if (factor.class === 'risk-low') colorClass = "text-green-600";
                     
+                    factorsList.innerHTML += `<li class="${colorClass} list-disc ml-4">${factor.text}</li>`;
+                });
+            }
 
-                    const well = document.createElement('div');
+            // 4. Llenar Recomendaciones (Personalizadas)
+            const recList = document.getElementById('recommendations-list');
+            recList.innerHTML = ""; 
+            
+            if (riskProfile.level === "MUY ALTO RIESGO" || riskProfile.level === "ALTO RIESGO") { recList.innerHTML += `<li class="font-bold text-red-700">Atención Prioritaria: Su perfil indica un riesgo cardiovascular elevado. Es fundamental consultar a un médico especialista a la brevedad.</li>`; }
+            if (riskProfile.factors.some(f => f.text.includes("Diabetes") || f.text.includes("Prediabetes"))) { recList.innerHTML += `<li>Controlar la glucosa y HbA1c es su prioridad #1. Requiere manejo médico y un plan de alimentación estricto.</li>`; }
+            if (riskProfile.factors.some(f => f.text.includes("Tabaquismo"))) { recList.innerHTML += `<li class="font-bold">El cese del tabaquismo es la intervención aislada más importante que puede hacer. Busque apoyo profesional para dejar de fumar.</li>`; }
+            if (riskProfile.factors.some(f => f.text.includes("Obesidad Abdominal") || f.text.includes("Sobrepeso"))) { recList.innerHTML += `<li>La pérdida de peso (5-10% inicial) mejorará drásticamente su presión arterial, glucosa y lípidos. Enfoque en reducir grasa visceral.</li>`; }
+            if (riskProfile.factors.some(f => f.text.includes("Baja Fuerza Muscular"))) { recList.innerHTML += `<li>Su fuerza es baja (riesgo de sarcopenia). Se recomienda iniciar un **programa de ejercicio de fuerza** (pesas, ligas, lagartijas) 2-3 veces por semana, supervisado.</li>`; }
+            if (riskProfile.factors.some(f => f.text.includes("Sedentarismo"))) { recList.innerHTML += `<li>Su nivel de actividad es insuficiente. Intente cumplir la meta de 150 minutos de actividad moderada (caminar rápido) por semana.</li>`; }
+            if (riskProfile.factors.some(f => f.text.includes("MASLD"))) { recList.innerHTML += `<li>Su riesgo de Hígado Graso es alto. La intervención principal es la **pérdida de peso** y la **reducción drástica de azúcares y harinas refinadas**.</li>`; }
+            if (recList.innerHTML === "") { recList.innerHTML = '<li>¡Excelente perfil! Mantenga un estilo de vida saludable y realice chequeos preventivos anuales.</li>'; }
+        }
 
-                    well.id = `well-${wellId}`;
+        function resetForm() {
+            // Muestra el formulario de ingreso
+            document.getElementById('input-form').classList.remove('hidden'); 
+            document.getElementById('results-section').classList.add('hidden');
+            document.getElementById('reset-button').classList.add('hidden');
+            document.getElementById('sheet-status').classList.add('hidden');
+            
+            // Reinicia el estado del checkbox y el botón de cálculo
+            const termsCheckbox = document.getElementById('accept-terms-final');
+            const calcButton = document.getElementById('calculate-button');
+            
+            if (termsCheckbox) termsCheckbox.checked = false;
+            if (calcButton) {
+                // El botón vuelve a su estado inicial de deshabilitado/requerido
+                calcButton.disabled = true;
+                calcButton.classList.add('opacity-50', 'cursor-not-allowed');
+            }
 
-                    // Basic styling + dataset for ID
+            document.getElementById('calc-form').reset();
+            window.scrollTo(0, 0);
+        }
+        
+        // --- Inicializador ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const calcButton = document.getElementById('calculate-button');
+            const resetButton = document.getElementById('reset-button');
+            const printButton = document.getElementById('print-button');
+            const termsCheckbox = document.getElementById('accept-terms-final'); 
+            const inputForm = document.getElementById('input-form');
+            const resultsSection = document.getElementById('results-section');
 
-                    well.className = 'well w-12 h-12 md:w-16 md:h-16 rounded-full flex items-center justify-center cursor-pointer bg-white';
+            // 1. Asegurar que el formulario de entrada es visible y los resultados están ocultos al cargar
+            if (inputForm) inputForm.classList.remove('hidden');
+            if (resultsSection) resultsSection.classList.add('hidden');
+            
+            if (calcButton) { calcButton.onclick = async (e) => { e.preventDefault(); await calculateRisk_v2(); }; }
+            if (resetButton) { resetButton.onclick = resetForm; }
+            if (printButton) { printButton.onclick = (e) => { e.preventDefault(); window.print(); }; }
+            
+            // 2. Controla la habilitación del botón de Cálculo basado en el checkbox
+            if (termsCheckbox && calcButton) {
+                // Al cargar, aseguramos que el botón está deshabilitado
+                calcButton.disabled = true;
+                calcButton.classList.add('opacity-50', 'cursor-not-allowed');
 
-                    well.dataset.id = wellId;
-
+                termsCheckbox.addEventListener('change', () => {
+                    const isChecked = termsCheckbox.checked;
+                    calcButton.disabled = !isChecked;
                     
-
-                    // Add the label inside the well
-
-                    const label = document.createElement('span');
-
-                    label.className = 'well-label text-sm md:text-base font-semibold';
-
-                    label.textContent = wellId;
-
-                    well.appendChild(label);
-
-
-
-                    // Add click listener for selection
-
-                    well.addEventListener('click', () => toggleWellSelection(wellId));
-
-                    layout.appendChild(well); // Add well to the grid layout
-
-
-
-                    // If restoring data, apply saved configuration styles
-
-                    if (restoringData?.wellData?.[wellId]) {
-
-                        const data = restoringData.wellData[wellId];
-
-                        well.classList.add('configured'); // Mark as configured
-
-                         // Apply type-specific border color class
-
-                        if (data.wellType && data.wellType !== 'default') {
-
-                            well.classList.add(data.wellType);
-
-                        }
-
-                    }
-
-                }
-
-            }
-
-            updateProtocolSchedule(); // Update the schedule based on the new/loaded plate data
-
-        }
-
-
-
-
-
-        function toggleWellSelection(wellId) {
-
-            const wellEl = document.getElementById(`well-${wellId}`);
-
-            if (selectedWells.has(wellId)) { // If already selected, deselect
-
-                selectedWells.delete(wellId);
-
-                wellEl.classList.remove('selected');
-
-            } else { // If not selected, select
-
-                selectedWells.add(wellId);
-
-                wellEl.classList.add('selected');
-
-            }
-
-        }
-
-
-
-        function selectAllWells() {
-
-            document.querySelectorAll('#plate-layout .well').forEach(well => {
-
-                const wellId = well.dataset.id;
-
-                if (!selectedWells.has(wellId)) { // Select only if not already selected
-
-                    selectedWells.add(wellId);
-
-                    well.classList.add('selected');
-
-                }
-
-            });
-
-        }
-
-        
-
-        function clearSelection() {
-
-            selectedWells.forEach(wellId => { // Deselect each currently selected well
-
-                const wellEl = document.getElementById(`well-${wellId}`);
-
-                if (wellEl) wellEl.classList.remove('selected');
-
-            });
-
-            selectedWells.clear(); // Empty the selection set
-
-        }
-
-
-
-        function openWellConfigModal() {
-
-            if (selectedWells.size === 0) { // Check if any wells are selected
-
-                showToast('Por favor, selecciona al menos un pozo para configurar.', 'error');
-
-                return;
-
-            }
-
-             // Display selected well IDs in modal title
-
-            const wellIds = Array.from(selectedWells).sort(); 
-
-            document.getElementById('well-ids-display').textContent = wellIds.join(', ');
-
-            
-
-            // Load configuration from the first selected well, or reset if none are configured yet
-
-            const firstWellId = wellIds[0];
-
-            if (wellData[firstWellId]) {
-
-                loadConfigToModal(wellData[firstWellId]); // Load existing config
-
-            } else {
-
-                resetModal(); // Reset to defaults
-
-            }
-
-
-
-            // Show the modal
-
-            document.getElementById('well-config-modal').style.display = 'flex';
-
-        }
-
-
-
-        function closeWellConfigModal() {
-
-            document.getElementById('well-config-modal').style.display = 'none'; // Hide modal
-
-        }
-
-        
-
-         function resetModal() {
-
-             // Reset all input fields in the well configuration modal to default/empty values
-
-            document.getElementById('well-type').value = 'default';
-
-            document.getElementById('well-total-volume').value = '';
-
-            document.getElementById('well-cell-count').value = '';
-
-            document.getElementById('variables-container').innerHTML = ''; // Clear dynamic variable fields
-
-            document.getElementById('protocol-steps-container').innerHTML = ''; // Clear dynamic protocol steps
-
-            // Reset cell calculation sub-panel fields
-
-            document.getElementById('neubauer-q1').value = '';
-
-            document.getElementById('neubauer-q2').value = '';
-
-            document.getElementById('neubauer-q3').value = '';
-
-            document.getElementById('neubauer-q4').value = '';
-
-            document.getElementById('cell-stock-conc').value = '';
-
-             document.getElementById('cell-stock-conc-unit').value = '1'; // Default to cells/mL
-
-            document.getElementById('cell-volume-result').textContent = '';
-
-            variableCounter = 0; // Reset counter for unique variable IDs
-
-            addVariable(); // Add one empty variable row by default
-
-            addProtocolStep(); // Add one empty protocol step row by default
-
-        }
-
-
-
-
-
-        function loadConfigToModal(data) {
-
-            resetModal(); // Start with a clean slate
-
-            // Populate general fields
-
-            document.getElementById('well-type').value = data.wellType || 'default';
-
-            document.getElementById('well-total-volume').value = data.totalVolume || '';
-
-            document.getElementById('well-cell-count').value = data.cells?.count || '';
-
-            
-
-            // Populate Variables section
-
-            const variablesContainer = document.getElementById('variables-container');
-
-            variablesContainer.innerHTML = ''; // Clear the default row added by resetModal
-
-            if (data.variables?.length > 0) {
-
-                 // Add rows for each saved variable
-
-                data.variables.forEach(v => addVariable(v)); 
-
-            } else {
-
-                addVariable(); // Add one empty row if no variables were saved
-
-            }
-
-            
-
-            // Populate Protocol Steps section
-
-            const stepsContainer = document.getElementById('protocol-steps-container');
-
-            stepsContainer.innerHTML = ''; // Clear the default row added by resetModal
-
-            if (data.protocol?.steps?.length > 0) {
-
-                // Add rows for each saved protocol step
-
-                data.protocol.steps.forEach(s => addProtocolStep(s)); 
-
-            } else {
-
-                addProtocolStep(); // Add one empty row if no steps were saved
-
-            }
-
-        }
-
-
-
-
-
-        function saveWellConfig() {
-
-            // Read values from the modal form
-
-            const wellType = document.getElementById('well-type').value;
-
-            const totalVolume = parseFloat(document.getElementById('well-total-volume').value);
-
-            const cellCount = parseFloat(document.getElementById('well-cell-count').value);
-
-
-
-            // Read Variable data
-
-            const variables = [];
-
-            document.querySelectorAll('#variables-container > div.p-4').forEach(varDiv => { // Select only variable rows
-
-                const variable = {
-
-                    id: varDiv.dataset.id, // Keep unique ID if needed later
-
-                    name: varDiv.querySelector('.variable-name').value.trim(),
-
-                    finalConc: parseFloat(varDiv.querySelector('.variable-final-conc').value),
-
-                    finalConcUnit: varDiv.querySelector('.variable-final-conc-unit').value,
-
-                };
-
-                // Only save valid variables (name and concentration must be present)
-
-                if (variable.name && !isNaN(variable.finalConc)) {
-
-                    variables.push(variable);
-
-                }
-
-            });
-
-            
-
-            // Read Protocol Step data
-
-            const protocolSteps = [];
-
-            document.querySelectorAll('#protocol-steps-container > div').forEach(stepDiv => {
-
-                const step = {
-
-                    name: stepDiv.querySelector('.protocol-step-name').value.trim(),
-
-                    duration: parseFloat(stepDiv.querySelector('.protocol-step-duration').value),
-
-                     // Unit stored as millisecond conversion factor
-
-                    unit: parseInt(stepDiv.querySelector('.protocol-step-unit').value) 
-
-                };
-
-                 // Only save valid steps (name and duration must be present)
-
-                if (step.name && !isNaN(step.duration)) {
-
-                    protocolSteps.push(step);
-
-                }
-
-            });
-
-
-
-            // Assemble the configuration data object for a well
-
-            const configData = {
-
-                wellType,
-
-                totalVolume: isNaN(totalVolume) ? null : totalVolume, // Store null if invalid
-
-                cells: { count: isNaN(cellCount) ? null : cellCount }, // Store null if invalid
-
-                variables,
-
-                protocol: {
-
-                    steps: protocolSteps
-
-                }
-
-            };
-
-            
-
-            // Apply this configuration to all currently selected wells
-
-            selectedWells.forEach(wellId => {
-
-                // IMPORTANT: Use deep copy to prevent all wells referencing the same object
-
-                wellData[wellId] = JSON.parse(JSON.stringify(configData)); 
-
-                const wellEl = document.getElementById(`well-${wellId}`);
-
-                if (wellEl) {
-
-                     // Update visual appearance of the well on the main grid
-
-                    wellEl.classList.remove('control', 'experimental', 'blanco', 'tratamiento-1', 'tratamiento-2', 'default');
-
-                    if(wellType !== 'default') {
-
-                        wellEl.classList.add(wellType); // Add new type class
-
-                    }
-
-                    wellEl.classList.add('configured'); // Mark as configured
-
-                    wellEl.classList.remove('selected'); // Deselect after saving
-
-                }
-
-            });
-
-            
-
-            updateProtocolSchedule(); // Refresh the main protocol schedule display
-
-            clearSelection(); // Clear the set of selected wells
-
-            closeWellConfigModal(); // Close the configuration window
-
-            showToast('Configuración guardada para los pozos seleccionados.'); // Confirmation message
-
-        }
-
-        
-
-        function addVariable(data = null) {
-
-            const template = document.getElementById('variable-template');
-
-            const clone = template.cloneNode(true); // Create a copy of the template
-
-            clone.id = ''; // Remove template ID
-
-            clone.classList.remove('hidden'); // Make it visible
-
-            
-
-             // Assign a unique ID for targeting the sub-calculator
-
-            const uniqueId = `var-${variableCounter++}`; 
-
-            clone.dataset.id = uniqueId; // Store ID if needed
-
-
-
-            populateUnitDropdowns(clone); // Populate unit dropdowns within the new row
-
-            
-
-            // Link the calculator toggle button to its specific sub-calculator div
-
-            const stockCalcToggle = clone.querySelector('.stock-calc-toggle');
-
-            const subCalcDiv = clone.querySelector('.sub-calc');
-
-            const subCalcId = `stock-calc-${uniqueId}`;
-
-            stockCalcToggle.dataset.target = subCalcId; // Set button target
-
-            subCalcDiv.id = subCalcId; // Set div ID
-
-            
-
-            // If loading data, fill in the fields
-
-            if (data) {
-
-                 clone.querySelector('.variable-name').value = data.name || '';
-
-                 clone.querySelector('.variable-final-conc').value = data.finalConc || '';
-
-                 clone.querySelector('.variable-final-conc-unit').value = data.finalConcUnit || 'µM'; // Default to µM if missing
-
-            }
-
-
-
-            // Add the new variable row to the container
-
-            document.getElementById('variables-container').appendChild(clone);
-
-        }
-
-
-
-        function addProtocolStep(data = null) {
-
-            const template = document.getElementById('protocol-step-template');
-
-            const clone = template.cloneNode(true); // Create copy
-
-            clone.id = ''; // Remove template ID
-
-            clone.classList.remove('hidden'); // Make visible
-
-            // If loading data, fill fields
-
-            if (data) {
-
-                clone.querySelector('.protocol-step-name').value = data.name || '';
-
-                clone.querySelector('.protocol-step-duration').value = data.duration || '';
-
-                // Unit is stored as ms factor, ensure correct option is selected
-
-                clone.querySelector('.protocol-step-unit').value = data.unit || '3600000'; // Default to hours
-
-            }
-
-            // Add new step row to container
-
-            document.getElementById('protocol-steps-container').appendChild(clone);
-
-        }
-
-
-
-        function calculateCellVolume() {
-
-            // Get required values from inputs
-
-            const cellCount = parseFloat(document.getElementById('well-cell-count').value);
-
-            let stockConc = parseFloat(document.getElementById('cell-stock-conc').value); 
-
-             // Factor to convert stock unit to cells/mL (1 for /mL, 1000 for /µL)
-
-            const stockUnitFactor = parseFloat(document.getElementById('cell-stock-conc-unit').value); 
-
-            const resultEl = document.getElementById('cell-volume-result');
-
-
-
-            // Validate inputs
-
-            if (isNaN(cellCount) || isNaN(stockConc) || stockConc === 0) {
-
-                resultEl.textContent = 'Inputs inválidos.';
-
-                return;
-
-            }
-
-            
-
-            // Standardize stock concentration to cells/mL
-
-            const stockConcInMl = stockConc * stockUnitFactor;
-
-
-
-            // Formula: Volume (µL) = (Desired Cells / Stock Conc (cells/mL)) * 1000
-
-            const volumeInMicroL = (cellCount / stockConcInMl) * 1000;
-
-             // Display result
-
-            resultEl.textContent = `Tomar: ${volumeInMicroL.toFixed(2)} µL`;
-
-        }
-
-
-
-        function calculateNeubauer() {
-
-             // Get counts from the four quadrant inputs
-
-            const q1 = parseFloat(document.getElementById('neubauer-q1').value) || 0;
-
-            const q2 = parseFloat(document.getElementById('neubauer-q2').value) || 0;
-
-            const q3 = parseFloat(document.getElementById('neubauer-q3').value) || 0;
-
-            const q4 = parseFloat(document.getElementById('neubauer-q4').value) || 0;
-
-
-
-            const sum = q1 + q2 + q3 + q4;
-
-            if (sum === 0) { // Basic validation
-
-                showToast("Introduce los conteos de los cuadrantes.", "error");
-
-                return;
-
-            }
-
-            const avg = sum / 4; // Calculate average count
-
-             // Standard Neubauer formula: Avg * Dilution Factor (assume 1) * 10^4
-
-            const concentration = avg * 10000; // Result is in cells/mL
-
-            
-
-            // Update the main stock concentration field and unit selector
-
-            document.getElementById('cell-stock-conc-unit').value = "1"; // Select "cells/mL" (factor=1)
-
-            document.getElementById('cell-stock-conc').value = concentration; // Fill in calculated concentration
-
-            showToast(`Concentración calculada: ${concentration.toExponential(2)} células/mL.`); // Confirmation
-
-             // Re-calculate volume needed with the new concentration
-
-             calculateCellVolume(); 
-
-        }
-
-
-
-        function calculateStockVolume(button) {
-
-             // Find the parent variable section using closest
-
-            const variableSection = button.closest('.p-4.border.rounded-lg.bg-gray-50'); 
-
-            if (!variableSection) return; 
-
-
-
-            // Get values from inputs within this specific variable section
-
-            const finalConc = parseFloat(variableSection.querySelector('.variable-final-conc').value);
-
-            const finalConcUnit = variableSection.querySelector('.variable-final-conc-unit').value;
-
-            const stockConc = parseFloat(variableSection.querySelector('.variable-stock-conc').value);
-
-            const stockConcUnit = variableSection.querySelector('.variable-stock-conc-unit').value;
-
-             // Get total volume from the main modal section
-
-            const totalVolume = parseFloat(document.getElementById('well-total-volume').value); // in µL
-
-            const resultEl = variableSection.querySelector('.variable-stock-volume-result');
-
-
-
-            // Validate inputs
-
-            if (isNaN(finalConc) || isNaN(stockConc) || isNaN(totalVolume) || stockConc === 0) {
-
-                 resultEl.textContent = 'Inputs inválidos.';
-
-                 return;
-
-            }
-
-            
-
-            // Convert final concentration to the stock concentration's units
-
-            const finalConcConverted = _pureConvertUnits(finalConc, finalConcUnit, stockConcUnit);
-
-            if (isNaN(finalConcConverted)) { // Check for conversion error
-
-                 resultEl.textContent = 'Error de conversión de unidad.';
-
-                 return;
-
-            }
-
-
-
-            // Apply C1V1 = C2V2 => V1 = (C2 * V2) / C1
-
-            // Here: V_Stock = (FinalConcConverted * TotalVolume_µL) / StockConc
-
-            const V_Stock_in_uL = (finalConcConverted * totalVolume) / stockConc;
-
-
-
-             // Display result
-
-            resultEl.textContent = `Tomar: ${V_Stock_in_uL.toFixed(3)} µL`;
-
-        }
-
-        
-
-        function calculateMasterMix() {
-
-            if (selectedWells.size === 0) {
-
-                showToast("Selecciona los pozos para los que quieres calcular la mezcla.", 'error');
-
-                return;
-
-            }
-
-            
-
-            const numWells = selectedWells.size;
-
-            const extraVolFactor = 1 + (parseFloat(document.getElementById('extra-volume').value) || 0) / 100;
-
-            const totalWellsToPrep = numWells * extraVolFactor;
-
-
-
-            const masterMix = {};
-
-             // Assume all selected wells have the same configuration, use the first one as reference
-
-            let firstWellId = Array.from(selectedWells)[0];
-
-            const baseConfig = wellData[firstWellId];
-
-
-
-            if (!baseConfig) { // Check if reference well is configured
-
-                showToast("El primer pozo seleccionado no está configurado.", 'error');
-
-                return;
-
-            }
-
-
-
-            // Calculate total cells needed
-
-            if (baseConfig.cells?.count > 0) {
-
-                masterMix['Células'] = { 
-
-                    total: `${(baseConfig.cells.count * totalWellsToPrep).toExponential(2)} células`,
-
-                    note: 'El volumen a tomar depende de la concentración de tu stock celular.'
-
-                };
-
-            }
-
-            
-
-            // Add objectives for each variable
-
-            baseConfig.variables.forEach(v => {
-
-                 masterMix[v.name] = {
-
-                     total: `Añadir para una concentración final de ${v.finalConc} ${v.finalConcUnit}`,
-
-                     note: 'El volumen a tomar depende de la concentración de tu reactivo stock.'
-
-                 };
-
-            });
-
-            
-
-            // Generate HTML table for display
-
-            let html = `<h3 class="font-bold mb-2">Receta para ${numWells} pozos (+${(extraVolFactor-1)*100}% extra):</h3>`;
-
-            html += `<table class="min-w-full divide-y divide-gray-200">
-
-                        <thead class="bg-gray-100"><tr>
-
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Componente</th>
-
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Cantidad Total / Objetivo</th>
-
-                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase">Notas</th>
-
-                        </tr></thead><tbody class="bg-white divide-y divide-gray-200">`;
-
-
-
-            for(const component in masterMix) { // Add row for each component
-
-                html += `<tr>
-
-                            <td class="px-4 py-2 whitespace-nowrap text-sm font-medium">${component}</td>
-
-                            <td class="px-4 py-2 whitespace-nowrap text-sm">${masterMix[component].total}</td>
-
-                            <td class="px-4 py-2 whitespace-nowrap text-sm text-gray-500">${masterMix[component].note}</td>
-
-                         </tr>`;
-
-            }
-
-            
-
-             // Add final volume row (media top-up)
-
-             html += `<tr><td class="px-4 py-2 text-sm font-bold">Medio de cultivo (completar hasta)</td>
-
-                          <td class="px-4 py-2 text-sm font-bold">${(baseConfig.totalVolume * totalWellsToPrep).toFixed(2)} µL</td><td></td></tr>`;
-
-
-
-            html += `</tbody></table><p class="text-xs mt-2 text-gray-500">Usa las sub-calculadoras en la configuración de pozos para determinar los volúmenes exactos a tomar de tus stocks.</p>`;
-
-            // Display the generated table
-
-            document.getElementById('master-mix-results').innerHTML = html;
-
-        }
-
-
-
-        function updateProtocolSchedule() {
-
-            const scheduleContainer = document.getElementById('protocol-schedule-container');
-
-            scheduleContainer.innerHTML = ''; // Clear previous schedule
-
-            let allSteps = [];
-
-
-
-            // Collect all steps from all configured wells
-
-            for (const wellId in wellData) {
-
-                const data = wellData[wellId];
-
-                // Check if protocol and steps exist for the well
-
-                if (!data.protocol?.steps) continue; 
-
-                
-
-                // Add each step with its index and unique ID
-
-                data.protocol.steps.forEach((step, index) => {
-
-                    allSteps.push({ 
-
-                        ...step, // Copy step data (name, duration, unit)
-
-                        wellId, 
-
-                        stepIndex: index + 1, // 1-based index
-
-                         // Create unique ID combining well, name (no spaces), and index
-
-                        eventId: `${wellId}-${step.name.replace(/\s/g, '')}-${index}` 
-
-                    });
-
-                });
-
-            }
-
-            
-
-            // Group identical steps across different wells
-
-            const uniqueSteps = Object.values(allSteps.reduce((acc, cur) => {
-
-                // Group key based on step properties
-
-                const key = `${cur.name}-${cur.duration}-${cur.unit}-${cur.stepIndex}`; 
-
-                if (!acc[key]) {
-
-                     // If new, create group with first well
-
-                    acc[key] = { ...cur, wells: [cur.wellId] }; 
-
-                } else {
-
-                    acc[key].wells.push(cur.wellId); // Add well to existing group
-
-                }
-
-                return acc;
-
-            }, {}));
-
-            
-
-            // Sort steps by their index (order in the protocol)
-
-            uniqueSteps.sort((a,b) => a.stepIndex - b.stepIndex);
-
-
-
-
-
-            if (uniqueSteps.length === 0) { // If no steps found
-
-                scheduleContainer.innerHTML = '<p class="text-gray-500">No hay pasos de protocolo configurados.</p>';
-
-                return;
-
-            }
-
-
-
-            // Create and append HTML for each unique step
-
-            uniqueSteps.forEach((step) => {
-
-                const durationMs = step.duration * step.unit; // Duration in milliseconds
-
-                 // Get human-readable unit text from ms factor
-
-                const unitText = {3600000: 'horas', 60000: 'minutos', 86400000: 'días'}[step.unit] || 'ms';
-
-
-
-                const eventEl = document.createElement('div');
-
-                eventEl.className = 'flex items-center justify-between p-3 bg-gray-100 rounded-lg';
-
-                // Populate element with step details, timer display, and button
-
-                eventEl.innerHTML = `
-
-                    <div>
-
-                        <span class="font-bold">Paso ${step.stepIndex}: ${step.name}</span>
-
-                        <span class="text-sm text-gray-600 ml-2">(${step.duration} ${unitText})</span>
-
-                        <p class="text-xs text-blue-600">Pozos: ${step.wells.join(', ')}</p> 
-
-                    </div>
-
-                    <div class="flex items-center space-x-3">
-
-                        <span id="timer-display-${step.eventId}" class="font-mono text-lg">--:--:--</span>
-
-                        <button id="timer-btn-${step.eventId}" class="bg-green-500 text-white text-sm font-semibold py-1 px-3 rounded-md hover:bg-green-600">Iniciar</button>
-
-                    </div>
-
-                `;
-
-                scheduleContainer.appendChild(eventEl); // Add to display
-
-                
-
-                // Add click listener for the timer button
-
-                document.getElementById(`timer-btn-${step.eventId}`).addEventListener('click', (e) => {
-
-                    handleTimerClick(e, step, durationMs);
-
-                });
-
-            });
-
-        }
-
-        
-
-        function handleTimerClick(e, event, durationMs) {
-
-            const btn = e.target;
-
-            const timerId = `timer-btn-${event.eventId}`; // Unique ID for the button/timer
-
-            const displayId = `timer-display-${event.eventId}`; // Unique ID for the display span
-
-
-
-            if (runningTimers[timerId]) { // If the timer is currently running, stop it
-
-                clearInterval(runningTimers[timerId].interval); // Clear the interval
-
-                delete runningTimers[timerId]; // Remove from tracking object
-
-                btn.textContent = 'Iniciar'; // Change button text
-
-                // Change button style back to 'start' style
-
-                btn.classList.add('bg-green-500', 'hover:bg-green-600');
-
-                btn.classList.remove('bg-red-500', 'hover:bg-red-600');
-
-                document.getElementById(displayId).textContent = '--:--:--'; // Reset display
-
-            } else { // If the timer is not running, start it
-
-                const endTime = Date.now() + durationMs; // Calculate end time
-
-                btn.textContent = 'Detener'; // Change button text
-
-                // Change button style to 'stop' style
-
-                btn.classList.remove('bg-green-500', 'hover:bg-green-600');
-
-                btn.classList.add('bg-red-500', 'hover:bg-red-600');
-
-
-
-                // Function to update the timer display
-
-                const updateDisplay = () => {
-
-                    const remaining = endTime - Date.now();
-
-                    if (remaining <= 0) { // Timer finished
-
-                        clearInterval(interval); // Stop the interval
-
-                        document.getElementById(displayId).textContent = '00:00:00';
-
-                        const notificationMessage = `¡Paso finalizado: ${event.name}!`;
-
-                        showToast(notificationMessage); // Show in-app toast
-
-                        // Show browser notification (if permission granted)
-
-                        if (Notification.permission === 'granted') {
-
-                            new Notification(notificationMessage);
-
-                        }
-
-                        btn.textContent = 'Finalizado'; // Update button text
-
-                        btn.disabled = true; // Disable the button
-
-                        btn.classList.remove('bg-red-500', 'hover:bg-red-600'); // Remove stop style
-
-                        delete runningTimers[timerId]; // Remove from tracking
-
-                    } else { // Timer still running
-
-                        // Calculate hours, minutes, seconds remaining
-
-                        const h = String(Math.floor(remaining / 3600000)).padStart(2, '0');
-
-                        const m = String(Math.floor((remaining % 3600000) / 60000)).padStart(2, '0');
-
-                        const s = String(Math.floor((remaining % 60000) / 1000)).padStart(2, '0');
-
-                        document.getElementById(displayId).textContent = `${h}:${m}:${s}`; // Update display
-
-                    }
-
-                };
-
-
-
-                // Start the interval timer, calling updateDisplay every second (1000 ms)
-
-                const interval = setInterval(updateDisplay, 1000);
-
-                 // Immediately update display once
-
-                updateDisplay();
-
-                // Store the interval ID and end time for tracking
-
-                runningTimers[timerId] = { interval, endTime };
-
-            }
-
-        }
-
-        
-
-        // --- ANIMAL MODELS ---
-
-        function addAnimalModel() {
-
-            const modelIdInput = document.getElementById('new-model-id');
-
-            const modelId = modelIdInput.value.trim();
-
-            if (!modelId) {
-
-                showToast("Por favor, introduce un ID para el nuevo modelo.", "error");
-
-                return;
-
-            }
-
-            if (animalModels[modelId]) {
-
-                 showToast(`El modelo con ID "${modelId}" ya existe.`, "error");
-
-                return;
-
-            }
-
-            animalModels[modelId] = { id: modelId, data: [] }; // Initialize with empty data array
-
-            modelIdInput.value = ''; // Clear input
-
-            renderAnimalModels(); // Refresh display
-
-            showToast(`Modelo "${modelId}" añadido.`);
-
-        }
-
-
-
-        function renderAnimalModels() {
-
-            const container = document.getElementById('animal-models-container');
-
-            container.innerHTML = ''; // Clear current display
-
-            const sortedModelIds = Object.keys(animalModels).sort(); // Sort IDs alphabetically
-
-
-
-            if (sortedModelIds.length === 0) {
-
-                 container.innerHTML = '<p class="text-gray-500">No hay modelos añadidos todavía.</p>';
-
-                 return;
-
-            }
-
-
-
-            sortedModelIds.forEach(modelId => {
-
-                const model = animalModels[modelId];
-
-                const modelDiv = document.createElement('div');
-
-                modelDiv.className = 'p-4 border rounded-lg bg-white shadow';
-
-                modelDiv.innerHTML = `
-
-                    <div class="flex justify-between items-center mb-2">
-
-                        <h3 class="font-bold text-lg text-blue-700">${model.id}</h3>
-
-                        <div>
-
-                            <button onclick="openModelDataModal('${modelId}')" class="text-sm bg-green-500 text-white py-1 px-3 rounded-md hover:bg-green-600">+ Añadir Registro</button>
-
-                            <button onclick="deleteAnimalModel('${modelId}')" class="text-sm bg-red-500 text-white py-1 px-3 rounded-md hover:bg-red-600 ml-2">Eliminar Modelo</button>
-
-                        </div>
-
-                    </div>
-
-                    <div class="max-h-60 overflow-y-auto">
-
-                        <table id="model-data-table-${modelId}" class="min-w-full text-sm">
-
-                            <thead>
-
-                                <tr><th>Fecha</th><th>Peso (g)</th><th>Talla (cm)</th><th>Glucosa (mg/dL)</th><th>Fuerza (gf)</th><th>Notas</th></tr>
-
-                            </thead>
-
-                            <tbody>
-
-                                ${model.data.sort((a,b) => new Date(b.date) - new Date(a.date)).map(entry => `
-
-                                    <tr>
-
-                                        <td>${new Date(entry.date).toLocaleDateString()}</td>
-
-                                        <td>${entry.weight ?? ''}</td>
-
-                                        <td>${entry.size ?? ''}</td>
-
-                                        <td>${entry.glucose ?? ''}</td>
-
-                                        <td>${entry.grip ?? ''}</td>
-
-                                        <td>${entry.notes ?? ''}</td>
-
-                                    </tr>
-
-                                `).join('')}
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-                `;
-
-                container.appendChild(modelDiv);
-
-            });
-
-        }
-
-         function deleteAnimalModel(modelId) {
-
-            // Confirmation could be added here
-
-            if (animalModels[modelId]) {
-
-                delete animalModels[modelId];
-
-                renderAnimalModels();
-
-                showToast(`Modelo "${modelId}" eliminado.`);
-
-            }
-
-        }
-
-
-
-
-
-        function openModelDataModal(modelId) {
-
-            currentEditingModelId = modelId; // Store which model we're adding data for
-
-            document.getElementById('modal-model-id').textContent = modelId; // Update modal title
-
-            // Clear previous entries
-
-            document.getElementById('modal-model-weight').value = '';
-
-            document.getElementById('modal-model-size').value = '';
-
-            document.getElementById('modal-model-glucose').value = '';
-
-            document.getElementById('modal-model-grip').value = '';
-
-            document.getElementById('modal-model-notes').value = '';
-
-            // Show modal
-
-            document.getElementById('model-data-modal').style.display = 'flex';
-
-        }
-
-
-
-        function closeModelDataModal() {
-
-            document.getElementById('model-data-modal').style.display = 'none';
-
-            currentEditingModelId = null; // Clear editing state
-
-        }
-
-
-
-        function saveModelDataEntry() {
-
-            if (!currentEditingModelId || !animalModels[currentEditingModelId]) return;
-
-
-
-            // Read data from modal inputs
-
-            const entry = {
-
-                date: new Date().toISOString(), // Record timestamp
-
-                weight: parseFloat(document.getElementById('modal-model-weight').value) || null,
-
-                size: parseFloat(document.getElementById('modal-model-size').value) || null,
-
-                glucose: parseFloat(document.getElementById('modal-model-glucose').value) || null,
-
-                grip: parseFloat(document.getElementById('modal-model-grip').value) || null,
-
-                notes: document.getElementById('modal-model-notes').value.trim() || null,
-
-            };
-
-
-
-            // Add the new entry to the model's data array
-
-            animalModels[currentEditingModelId].data.push(entry);
-
-            renderAnimalModels(); // Refresh the display for that model
-
-            closeModelDataModal(); // Close the modal
-
-            showToast(`Registro añadido para ${currentEditingModelId}.`);
-
-        }
-
-
-
-        function saveModelData() {
-
-             if (Object.keys(animalModels).length === 0) {
-
-                showToast("No hay datos de modelos para guardar.", "warning");
-
-                return;
-
-            }
-
-            const dataString = JSON.stringify(animalModels, null, 2);
-
-            const blob = new Blob([dataString], { type: 'application/json' });
-
-            const url = URL.createObjectURL(blob);
-
-            const a = document.createElement('a');
-
-            a.href = url;
-
-            a.download = `datos_modelos_${new Date().toISOString().split('T')[0]}.json`;
-
-            document.body.appendChild(a);
-
-            a.click();
-
-            document.body.removeChild(a);
-
-            URL.revokeObjectURL(url);
-
-            showToast('Datos de modelos guardados.');
-
-        }
-
-
-
-        function loadModelData(event) {
-
-            const file = event.target.files[0];
-
-            if (!file) return;
-
-            const reader = new FileReader();
-
-            reader.onload = (e) => {
-
-                try {
-
-                    const loadedData = JSON.parse(e.target.result);
-
-                     // Basic validation: check if it looks like the expected structure
-
-                    if (typeof loadedData === 'object' && loadedData !== null) {
-
-                        animalModels = loadedData; // Overwrite current data
-
-                        renderAnimalModels(); // Refresh display
-
-                        showToast('Datos de modelos cargados.');
-
+                    if (isChecked) {
+                        calcButton.classList.remove('opacity-50', 'cursor-not-allowed');
                     } else {
-
-                        throw new Error("El archivo no tiene el formato esperado.");
-
+                        calcButton.classList.add('opacity-50', 'cursor-not-allowed');
                     }
-
-                } catch (error) {
-
-                    showToast(`Error al cargar datos de modelos: ${error.message}`, 'error');
-
-                }
-
-            };
-
-            reader.readAsText(file);
-
-            event.target.value = ''; // Reset input
-
-        }
-
-
-
-        function calculateModelDose() {
-
-             // Get all input values and selected units
-
-             const doseAmount = parseFloat(document.getElementById('dose-amount').value);
-
-             const doseAmountUnit = document.getElementById('dose-amount-unit').value;
-
-             const doseWeightUnitVal = parseFloat(document.getElementById('dose-weight-unit-val').value) || 1; // Default to 'per 1 unit'
-
-             const doseWeightUnit = document.getElementById('dose-weight-unit').value; // e.g., 'kg' or 'g'
-
-             const modelWeight = parseFloat(document.getElementById('model-weight').value);
-
-             const modelWeightUnit = document.getElementById('model-weight-unit').value;
-
-             const stockConcAmount = parseFloat(document.getElementById('stock-conc-dose').value);
-
-             const stockConcUnit = document.getElementById('stock-conc-dose-unit').value; // e.g., 'mg/mL'
-
-             const outputUnit = document.getElementById('dose-output-unit').value; // e.g., 'µL' or 'mL'
-
-             const resultDiv = document.getElementById('dose-calculation-result');
-
-
-
-              // Basic validation
-
-             if (isNaN(doseAmount) || isNaN(modelWeight) || isNaN(stockConcAmount) || stockConcAmount === 0 || isNaN(doseWeightUnitVal) || doseWeightUnitVal === 0) {
-
-                 resultDiv.innerHTML = `<span class="text-red-500">Por favor, completa todos los campos numéricos requeridos.</span>`;
-
-                 return;
-
-             }
-
-
-
-             try {
-
-                // 1. Calculate Total Amount of Drug Needed
-
-                // Convert model weight to the same unit as the dose weight unit
-
-                const modelWeightConverted = _pureConvertUnits(modelWeight, modelWeightUnit, doseWeightUnit);
-
-                 if (isNaN(modelWeightConverted)) throw new Error(`No se puede convertir el peso del modelo (${modelWeightUnit}) a la unidad de peso de la dosis (${doseWeightUnit}).`);
-
-                
-
-                 // Calculate total amount needed in 'doseAmountUnit'
-
-                 // Amount = (Model Weight / Dose Weight Unit Value) * Dose Amount
-
-                 const totalAmountNeeded = (modelWeightConverted / doseWeightUnitVal) * doseAmount;
-
-                 
-
-                 // 2. Calculate Volume of Stock to Administer
-
-                 // Convert total amount needed to the mass unit of the stock concentration
-
-                 const stockMassUnit = stockConcUnit.split('/')[0];
-
-                 const stockVolUnit = stockConcUnit.split('/')[1];
-
-                  // Ensure stockConcUnit is valid before splitting
-
-                 if (!stockMassUnit || !stockVolUnit) throw new Error(`Unidad de concentración de stock inválida: ${stockConcUnit}`);
-
-
-
-                 const totalAmountConverted = _pureConvertUnits(totalAmountNeeded, doseAmountUnit, stockMassUnit);
-
-                  if (isNaN(totalAmountConverted)) throw new Error(`No se puede convertir la unidad de cantidad de dosis (${doseAmountUnit}) a la unidad de masa del stock (${stockMassUnit}).`);
-
-
-
-                 // Volume = Amount / Concentration
-
-                 // Volume (in stockVolUnit) = totalAmountConverted / stockConcAmount
-
-                 const volumeInStockVolUnit = totalAmountConverted / stockConcAmount;
-
-
-
-                 // 3. Convert Resulting Volume to Desired Output Unit
-
-                 const finalVolume = _pureConvertUnits(volumeInStockVolUnit, stockVolUnit, outputUnit);
-
-                 if (isNaN(finalVolume)) throw new Error(`No se puede convertir el volumen calculado (${stockVolUnit}) a la unidad de salida (${outputUnit}).`);
-
-
-
-                  // Display result
-
-                 resultDiv.textContent = `Administrar: ${finalVolume.toPrecision(4)} ${outputUnit}`;
-
-
-
-             } catch (error) {
-
-                 resultDiv.innerHTML = `<span class="text-red-500">Error: ${error.message}</span>`;
-
-             }
-
-        }
-
-
-
-
-
-        // --- UTILITIES ---
-
-        function toggleSubCalc(targetId) {
-
-            const el = document.getElementById(targetId);
-
-            if(el) {
-
-                // Toggle display between 'block' and 'none'
-
-                el.style.display = el.style.display === 'block' ? 'none' : 'block';
-
-            }
-
-        }
-
-        
-
-        function showToast(message, type = 'success') {
-
-            const toast = document.getElementById('toast');
-
-            const toastMessage = document.getElementById('toast-message');
-
-            
-
-            toastMessage.textContent = message; // Set message text
-
-            // Reset classes, then add 'show' and color class
-
-            toast.className = 'toast show fixed bottom-5 right-5 text-white py-3 px-6 rounded-lg shadow-xl'; 
-
-            toast.classList.add(type === 'error' ? 'bg-red-500' : 'bg-green-500');
-
-            
-
-            // Hide the toast after 3 seconds
-
-            setTimeout(() => {
-
-                toast.classList.remove('show');
-
-            }, 3000);
-
-        }
-
-        
-
-        function populateUnitDropdowns(context = document) {
-
-            // Define available units by type
-
-            const massUnits = Object.keys(CONVERSION_FACTORS.mass);
-
-            const volUnits = Object.keys(CONVERSION_FACTORS.volume);
-
-            const concUnits = Object.keys(CONVERSION_FACTORS.concentration); // Molar
-
-            // Create combined mass/volume concentration units (e.g., g/L, mg/mL, µg/µL, etc.)
-
-            const combinedUnits = [];
-
-            massUnits.forEach(m => volUnits.forEach(v => combinedUnits.push(`${m}/${v}`)));
-
-             // All possible concentration units
-
-            const allConcUnits = [...concUnits, ...combinedUnits];
-
-             // All units for the general converter
-
-            const allUnits = [...massUnits, ...volUnits, ...allConcUnits]; 
-
-
-
-            // --- Populate Dropdowns in Main Calculators (if context is document) ---
-
-            const ucFrom = context.querySelector('#uc-from'); 
-
-            if (ucFrom && context === document) { // Check if running on the main document
-
-                 // General Unit Converter
-
-                ucFrom.innerHTML = allUnits.map(u => `<option value="${u}">${u}</option>`).join('');
-
-                document.getElementById('uc-to').innerHTML = allUnits.map(u => `<option value="${u}">${u}</option>`).join('');
-
-                
-
-                // Dilution Calculator (C1, C2 use all concentration types, V1, V2 use volume)
-
-                document.getElementById('c1-unit').innerHTML = allConcUnits.map(u => `<option value="${u}">${u}</option>`).join('');
-
-                document.getElementById('c2-unit').innerHTML = allConcUnits.map(u => `<option value="${u}">${u}</option>`).join('');
-
-                document.getElementById('v1-unit').innerHTML = volUnits.map(u => `<option value="${u}">${u}</option>`).join('');
-
-                document.getElementById('v2-unit').innerHTML = volUnits.map(u => `<option value="${u}">${u}</option>`).join('');
-
-
-
-                 // Dose Calculator (specific units)
-
-                 document.getElementById('dose-amount-unit').innerHTML = massUnits.map(u => `<option value="${u}">${u}</option>`).join('');
-
-                 // document.getElementById('dose-weight-unit') // Already has g/kg
-
-                 // document.getElementById('model-weight-unit') // Already has g/kg
-
-                 document.getElementById('stock-conc-dose-unit').innerHTML = allConcUnits.map(u => `<option value="${u}">${u}</option>`).join('');
-
-                 // document.getElementById('dose-output-unit') // Already has µL/mL
-
-            }
-
-            
-
-            // --- Populate Dropdowns within Variable Template Clones ---
-
-            // Find dropdowns specifically within the context (which might be a cloned template row)
-
-            const finalConcUnitSelects = context.querySelectorAll('.variable-final-conc-unit');
-
-            const stockConcUnitSelects = context.querySelectorAll('.variable-stock-conc-unit');
-
-            
-
-            // Populate with all concentration units, defaulting to µM or mM respectively
-
-            finalConcUnitSelects.forEach(select => {
-
-                select.innerHTML = allConcUnits.map(u => `<option value="${u}" ${u === 'µM' ? 'selected' : ''}>${u}</option>`).join('');
-
-            });
-
-            stockConcUnitSelects.forEach(select => {
-
-                select.innerHTML = allConcUnits.map(u => `<option value="${u}" ${u === 'mM' ? 'selected' : ''}>${u}</option>`).join('');
-
-            });
-
-        }
-
-        
-
-        // --- SAVE / LOAD ---
-
-        function saveExperiment() {
-
-            // Gather current state into an object
-
-            const experimentState = {
-
-                experimentName: document.getElementById('exp-name').value,
-
-                plateType: document.getElementById('plate-type').value,
-
-                wellData: wellData, // The main data object holding all well configurations
-
-            };
-
-
-
-            // Convert state object to a JSON string
-
-            const jsonString = JSON.stringify(experimentState, null, 2); // null, 2 for pretty printing
-
-            // Create a Blob (Binary Large Object) containing the JSON data
-
-            const blob = new Blob([jsonString], { type: 'application/json' });
-
-             // Create a temporary URL for the Blob
-
-            const url = URL.createObjectURL(blob);
-
-
-
-            // Create a temporary anchor (link) element
-
-            const a = document.createElement('a');
-
-            a.href = url; // Set the link's href to the Blob URL
-
-            // Create a filename (use experiment name or 'experimento', replace spaces with underscores)
-
-            const fileName = (experimentState.experimentName || 'experimento').replace(/\s+/g, '_');
-
-            a.download = `${fileName}.json`; // Set the download attribute to suggest a filename
-
-            document.body.appendChild(a); // Add the link to the document
-
-            a.click(); // Programmatically click the link to trigger download
-
-            document.body.removeChild(a); // Remove the temporary link
-
-            URL.revokeObjectURL(url); // Release the Blob URL resource
-
-            showToast('Experimento guardado exitosamente.'); // Show confirmation
-
-        }
-
-
-
-        function loadExperiment(event) {
-
-            const file = event.target.files[0]; // Get the selected file
-
-            if (!file) return; // Exit if no file selected
-
-
-
-            const reader = new FileReader(); // Create a FileReader to read the file
-
-            reader.onload = function(e) { // Define what happens when the file is successfully read
-
-                try {
-
-                    // Parse the file content (assumed to be JSON) into a JavaScript object
-
-                    const loadedState = JSON.parse(e.target.result);
-
-                    
-
-                    // Restore state from the loaded object
-
-                    document.getElementById('exp-name').value = loadedState.experimentName || ''; // Restore experiment name
-
-                    wellData = loadedState.wellData || {}; // Restore the main well data object
-
-                    // Regenerate the plate based on the loaded data (also updates schedule)
-
-                    generatePlate(loadedState); 
-
-                    showToast('Experimento cargado exitosamente.'); // Show confirmation
-
-                } catch (error) {
-
-                    // Handle errors during file reading or JSON parsing
-
-                    showToast('Error al cargar el archivo. Asegúrate de que es un archivo de experimento válido.', 'error');
-
-                    console.error("Error loading experiment:", error);
-
-                }
-
-            };
-
-            // Read the file content as text
-
-            reader.readAsText(file);
-
-            // Reset the file input value to allow loading the same file again if needed
-
-            event.target.value = ''; 
-
-        }
-
-
-
-        // --- REPORTING ---
-
-        function generateReport() {
-
-            const output = document.getElementById('report-output');
-
-            const expName = document.getElementById('exp-name').value || 'Sin nombre';
-
-            const plateType = document.getElementById('plate-type').value;
-
-
-
-            // Check if there is any data to report
-
-            if (Object.keys(wellData).length === 0) {
-
-                output.innerHTML = '<p class="text-red-500">No hay datos de experimento para reportar. Por favor, configura al menos un pozo.</p>';
-
-                document.getElementById('export-csv-btn').style.display = 'none'; // Hide CSV button
-
-                return;
-
-            }
-
-
-
-            // Start building the HTML report string
-
-            let html = `<h3>Información General</h3>
-
-                        <ul>
-
-                            <li><strong>Nombre del Experimento:</strong> ${expName}</li>
-
-                            <li><strong>Tipo de Placa:</strong> ${plateType} pozos</li>
-
-                        </ul>`;
-
-
-
-            // Group wells that have the exact same configuration to avoid repetition
-
-            const groupedWells = {};
-
-            for (const wellId in wellData) {
-
-                // Use the JSON string of the config as a key for grouping
-
-                const configKey = JSON.stringify(wellData[wellId]); 
-
-                if (!groupedWells[configKey]) {
-
-                    // If this configuration is new, create a group for it
-
-                    groupedWells[configKey] = {
-
-                        config: wellData[wellId],
-
-                        wells: [] // List of wells with this config
-
-                    };
-
-                }
-
-                // Add the current well to the appropriate group
-
-                groupedWells[configKey].wells.push(wellId);
-
-            }
-
-
-
-            // Add sections for each unique well configuration group
-
-            html += `<h3>Configuración de Pozos</h3>`;
-
-            Object.values(groupedWells).forEach((group, index) => {
-
-                const config = group.config; // The configuration for this group
-
-                html += `<div class="p-4 mb-4 border rounded-lg">
-
-                            <h4><strong>Grupo ${index + 1}:</strong> Pozos ${group.wells.join(', ')}</h4>
-
-                            <ul>
-
-                                <li><strong>Tipo:</strong> ${config.wellType}</li>
-
-                                <li><strong>Volumen Total:</strong> ${config.totalVolume ?? 'N/A'} µL</li>
-
-                                <li><strong>Células:</strong> ${config.cells?.count ?? 'N/A'}</li>
-
-                            </ul>`;
-
-                // Add table for variables if they exist
-
-                if (config.variables?.length > 0) {
-
-                    html += `<h5>Variables:</h5>
-
-                             <table class="min-w-full text-sm">
-
-                                <thead class="bg-gray-100"><tr><th>Nombre</th><th>Conc. Final</th></tr></thead>
-
-                                <tbody>`;
-
-                    config.variables.forEach(v => {
-
-                        html += `<tr><td>${v.name}</td><td>${v.finalConc} ${v.finalConcUnit}</td></tr>`;
-
-                    });
-
-                    html += `</tbody></table>`;
-
-                }
-
-                 // Add list for protocol steps if they exist
-
-                 if (config.protocol?.steps?.length > 0) {
-
-                    html += `<h5>Protocolo:</h5><ul>`;
-
-                    config.protocol.steps.forEach((step, i) => {
-
-                         // Convert ms unit value back to text
-
-                         const unitText = {3600000:'horas', 60000:'minutos', 86400000:'días'}[step.unit] || 'ms';
-
-                        html += `<li><strong>Paso ${i+1}:</strong> ${step.name} (${step.duration} ${unitText})</li>`;
-
-                    });
-
-                    html += `</ul>`;
-
-                }
-
-                html += `</div>`;
-
-            });
-
-            
-
-            // Display the generated HTML report
-
-            output.innerHTML = html;
-
-            // Show the "Download CSV" button
-
-            document.getElementById('export-csv-btn').style.display = 'inline-block';
-
-        }
-
-
-
-        function exportReportCSV() {
-
-            const expName = document.getElementById('exp-name').value || 'Sin nombre';
-
-            const plateType = document.getElementById('plate-type').value;
-
-             // Start CSV string with UTF-8 BOM for better Excel compatibility with special characters
-
-            let csvContent = "\uFEFF"; 
-
-            
-
-            // Helper function to safely format values for CSV (handles commas, quotes, newlines)
-
-            const escapeCSV = (str) => {
-
-                 // Ensure input is a string, handle null/undefined
-
-                const value = (str === undefined || str === null) ? '' : String(str);
-
-                 // If the string contains problematic characters, enclose in double quotes and escape internal quotes
-
-                if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-
-                    return `"${value.replace(/"/g, '""')}"`; // Replace single " with ""
-
-                }
-
-                return value; // Return as is if safe
-
-            };
-
-
-
-            // Add General Info section to CSV
-
-            csvContent += "Sección,Parámetro,Valor\n";
-
-            csvContent += `Información General,Nombre del Experimento,${escapeCSV(expName)}\n`;
-
-            csvContent += `Información General,Tipo de Placa,${escapeCSV(plateType + ' pozos')}\n\n`;
-
-
-
-            // Prepare headers for the main data table (Wells)
-
-            const headers = ['Pozo', 'Tipo de Pozo', 'Volumen Total (uL)', 'Cantidad de Células'];
-
-            // Dynamically find all unique variable names and max number of steps across all wells
-
-            const allVars = new Set();
-
-            let maxSteps = 0;
-
-            Object.values(wellData).forEach(d => {
-
-                d.variables?.forEach(v => allVars.add(v.name)); // Collect unique variable names
-
-                // Find the maximum number of protocol steps any well has
-
-                if(d.protocol?.steps?.length > maxSteps) maxSteps = d.protocol.steps.length; 
-
-            });
-
-            const varColumns = Array.from(allVars); // Convert Set to Array for consistent order
-
-            // Add variable columns to headers
-
-            varColumns.forEach(v => headers.push(`Variable: ${v} (Conc. Final)`));
-
-             // Add protocol step columns to headers (Name and Duration for each step up to maxSteps)
-
-            for(let i=1; i<= maxSteps; i++) {
-
-                headers.push(`Paso ${i}: Nombre`);
-
-                headers.push(`Paso ${i}: Duración`);
-
-            }
-
-            // Add header row to CSV content
-
-            csvContent += headers.map(escapeCSV).join(',') + '\n';
-
-            
-
-            // Add data rows for each well
-
-            // Sort well IDs for consistent output order (e.g., A1, A2, ..., B1, B2, ...)
-
-            const sortedWellIds = Object.keys(wellData).sort((a, b) => {
-
-                const rowA = a.match(/[A-Z]+/)[0];
-
-                const colA = parseInt(a.match(/\d+/)[0]);
-
-                const rowB = b.match(/[A-Z]+/)[0];
-
-                const colB = parseInt(b.match(/\d+/)[0]);
-
-                if (rowA !== rowB) return rowA.localeCompare(rowB);
-
-                return colA - colB;
-
-            });
-
-
-
-            for (const wellId of sortedWellIds) {
-
-                const d = wellData[wellId]; // Current well data
-
-                 // Start row with basic well info
-
-                const row = [
-
-                    wellId,
-
-                    d.wellType,
-
-                    d.totalVolume ?? '', // Use empty string if null/undefined
-
-                    d.cells?.count ?? '' // Use empty string if null/undefined
-
-                ];
-
-                // Add variable data for this well, matching the header order
-
-                varColumns.forEach(varName => {
-
-                    // Find the variable data for the current column's variable name
-
-                    const variable = d.variables?.find(v => v.name === varName); 
-
-                    // Add concentration and unit if variable exists for this well, else empty string
-
-                    row.push(variable ? `${variable.finalConc ?? ''} ${variable.finalConcUnit ?? ''}`.trim() : ''); 
-
                 });
-
-
-
-                // Add protocol step data for this well, matching the header order
-
-                for(let i=0; i< maxSteps; i++) {
-
-                    const step = d.protocol?.steps?.[i]; // Get step data if exists
-
-                    if (step) {
-
-                         // Convert ms unit value back to text
-
-                        const unitText = {3600000:'horas', 60000:'minutos', 86400000:'días'}[step.unit] || 'ms';
-
-                        row.push(step.name);
-
-                        row.push(`${step.duration} ${unitText}`);
-
-                    } else {
-
-                        // Add empty strings if step doesn't exist for this well at this index
-
-                        row.push('');
-
-                        row.push('');
-
-                    }
-
-                }
-
-                // Add the complete, escaped row for this well to the CSV content
-
-                csvContent += row.map(escapeCSV).join(',') + '\n';
-
             }
-
-            csvContent += '\n'; // Add a blank line for separation (optional)
-
-
-
-
-
-            // Create Blob and initiate download
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-
-            const url = URL.createObjectURL(blob);
-
-            const link = document.createElement("a");
-
-            link.setAttribute("href", url);
-
-            const fileName = (expName || 'reporte').replace(/\s+/g, '_'); // Sanitize filename
-
-            link.setAttribute("download", `${fileName}.csv`);
-
-            document.body.appendChild(link); // Add link to body temporarily
-
-            link.click(); // Trigger download
-
-            document.body.removeChild(link); // Remove link
-
-            URL.revokeObjectURL(url); // Clean up Blob URL
-
-        }
-
-
-
-
-
-        // --- INITIALIZATION ---
-
-        window.onload = () => {
-
-            generatePlate(); // Generate default plate (24 well) on load
-
-            populateUnitDropdowns(); // Populate all unit dropdowns in the document
-
-             // Request permission for desktop notifications on load if not already granted or denied
-
-            if (typeof Notification !== 'undefined' && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-
-                Notification.requestPermission();
-
-            }
-
-            changeTab('guide'); // Set the 'guide' tab as the active one initially
-
-             // Add event listener for the file input used for loading experiment (.json) files
-
-            document.getElementById('load-exp-input').addEventListener('change', loadExperiment);
-
-             // Add event listener for loading animal model data
-
-             document.getElementById('load-model-input').addEventListener('change', loadModelData);
-
-
-
-        };
-
-
-
+        });
     </script>
-
 </body>
-
 </html>
