@@ -70,7 +70,8 @@
 
         <form id="calc-form" class="no-print">
             <div id="validation-message" class="hidden p-3 mb-4 rounded-lg bg-red-100 text-red-700 font-semibold"></div>
-            <div id="input-form">
+            
+            <div id="input-form"> 
                 
                 <h2 class="text-2xl font-bold ipn-accent mb-4 border-b pb-2">1. Datos Personales</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
@@ -514,10 +515,6 @@
         // === LÓGICA JAVASCRIPT DE LA CALCULADORA ================
         // =======================================================
         
-        // --- ESTADO GLOBAL ---
-        // Eliminamos la validación de la pantalla de bienvenida de la función de cálculo.
-        // Ahora, el botón de cálculo está deshabilitado por el checkbox HTML.
-        
         // --- CONFIGURACIÓN DE INTEGRACIÓN CON GOOGLE SHEETS (IMPORTANTE) ---
         const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbweuEciVBAMuQgFMJe6HQrH4Q3v4aAKyhlZUr45lAIiZCseb095Hy8ljd2NDOvv42ODIw/exec";
         
@@ -556,8 +553,6 @@
         // ====================================================================
 
         async function calculateRisk_v2() {
-            // Ya no validamos welcome-screen aquí, el botón ya está deshabilitado por el checkbox.
-
             const validationDiv = document.getElementById('validation-message');
             validationDiv.classList.add('hidden');
             document.getElementById('sheet-status').classList.add('hidden');
@@ -579,6 +574,7 @@
             
             window.lastResultData_v2 = { inputs, metrics, riskProfile };
 
+            // Ocultar el formulario y mostrar los resultados (Flujo Normal)
             document.getElementById('input-form').classList.add('hidden'); 
             document.getElementById('results-section').classList.remove('hidden');
             document.getElementById('reset-button').classList.remove('hidden');
@@ -890,20 +886,18 @@
         }
 
         function resetForm() {
-            // Elimina la necesidad de la pantalla de bienvenida, solo resetea el formulario
-            document.getElementById('welcome-screen').style.display = 'none'; // Aseguramos que se oculta
-            document.getElementById('input-form').classList.remove('hidden'); // Muestra el formulario
+            // Oculta los resultados y muestra el formulario de ingreso
+            document.getElementById('input-form').classList.remove('hidden'); 
             document.getElementById('results-section').classList.add('hidden');
             document.getElementById('reset-button').classList.add('hidden');
             document.getElementById('sheet-status').classList.add('hidden');
             
-            // Reinicia el estado de aceptación
+            // Reinicia el estado del checkbox y el botón de cálculo
             const termsCheckbox = document.getElementById('accept-terms-final');
-            if (termsCheckbox) termsCheckbox.checked = false;
-            
-            // Fuerza el botón de cálculo a estar deshabilitado al resetear
             const calcButton = document.getElementById('calculate-button');
-             if (calcButton) {
+            
+            if (termsCheckbox) termsCheckbox.checked = false;
+            if (calcButton) {
                 calcButton.disabled = true;
                 calcButton.classList.add('opacity-50', 'cursor-not-allowed');
             }
@@ -912,33 +906,19 @@
             window.scrollTo(0, 0);
         }
         
-        // ====================================================================
-        // === Inicializador y Event Listeners del Checkbox =====================
-        // ====================================================================
-        
+        // --- Inicializador ---
         document.addEventListener('DOMContentLoaded', () => {
             const calcButton = document.getElementById('calculate-button');
             const resetButton = document.getElementById('reset-button');
             const printButton = document.getElementById('print-button');
-            const termsCheckbox = document.getElementById('accept-terms-final'); // Usamos el checkbox del final del formulario
-
-            // 1. Ocultar la pantalla de bienvenida e iniciar directamente el formulario
-            const welcomeScreen = document.getElementById('welcome-screen');
-            if (welcomeScreen) {
-                welcomeScreen.style.display = 'none';
-            }
+            const termsCheckbox = document.getElementById('accept-terms-final'); 
             
-            // 2. Asignar las funciones de botones
             if (calcButton) { calcButton.onclick = async (e) => { e.preventDefault(); await calculateRisk_v2(); }; }
             if (resetButton) { resetButton.onclick = resetForm; }
             if (printButton) { printButton.onclick = (e) => { e.preventDefault(); window.print(); }; }
             
-            // 3. Lógica de habilitación/deshabilitación del botón de Cálculo (por el checkbox al final del formulario)
+            // Controla la habilitación del botón de Cálculo basado en el checkbox
             if (termsCheckbox && calcButton) {
-                
-                // Inicialmente deshabilitado
-                calcButton.disabled = true;
-
                 termsCheckbox.addEventListener('change', () => {
                     const isChecked = termsCheckbox.checked;
                     calcButton.disabled = !isChecked;
