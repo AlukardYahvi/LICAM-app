@@ -5,11 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calculadora de Riesgo Cardiometabólico Integral (v2.0 - Impresión)</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Incluimos Quicksand para una tipografía más moderna y amigable -->
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300..700&display=swap" rel="stylesheet">
     <style>
         /* Estilos personalizados para la tesis */
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f8f9fa;
+            font-family: 'Quicksand', sans-serif; /* Usamos la fuente más amigable */
+            background-color: #e6e9f0; /* Fondo más suave */
+            /* NUEVO: Fondo con gradiente sutil y patrón geométrico que evoca lo médico/científico */
+            background-image: radial-gradient(#ffffff 1px, transparent 0), radial-gradient(#ffffff 1px, #f5f6f8 0);
+            background-size: 40px 40px;
+            background-position: 0 0, 20px 20px;
         }
         /* Paleta de riesgo */
         .risk-low { background-color: #d1fae5; color: #065f46; border-color: #34d399; }
@@ -17,41 +23,49 @@
         .risk-high { background-color: #fee2e2; color: #991b1b; border-color: #f87171; }
         .risk-very-high { background-color: #eeb8b8; color: #570a0a; border-color: #c95d5d; } /* Color para Muy Alto Riesgo */
 
-        /* IPN/ESM Accent */
-        .ipn-accent { color: #b91c1c; } /* Rojo Guinda */
-        .ipn-border { border-color: #b91c1c; }
-        .ipn-bg { background-color: #b91c1c; }
+        /* IPN/ESM Accent - Color Ligeramente más vivo y elegante */
+        .ipn-accent { color: #8e1c1c; } /* Guinda más profundo */
+        .ipn-border { border-color: #8e1c1c; }
+        .ipn-bg { background-color: #8e1c1c; }
         .shadow-glow {
-            box-shadow: 0 0 15px rgba(185, 28, 28, 0.3);
+            /* Sombra más profunda y enfocada en el color IPN */
+            box-shadow: 0 5px 20px rgba(142, 28, 28, 0.4);
         }
         
-        /* Estilo para el contenedor principal de la página */
+        /* Estilo para el contenedor principal de la página: más redondeado y con mejor sombra */
         .main-container {
-            max-width: 1200px; /* Incrementado para mejor presentación del contenido */
+            max-width: 1200px;
             margin-left: auto;
             margin-right: auto;
-            background-color: #ffffff;
-            padding: 2.5rem; /* p-10 */
-            border-radius: 1rem; /* rounded-xl */
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); /* shadow-2xl */
-            border-top: 8px solid #b91c1c; /* border-t-8 ipn-border */
+            background-color: #ffffff; /* Asegura el blanco para el contenido del formulario */
+            padding: 2.5rem; 
+            border-radius: 1.5rem; /* Bordes más redondeados */
+            box-shadow: 0 30px 40px -5px rgba(0, 0, 0, 0.15), 0 15px 15px -5px rgba(0, 0, 0, 0.08);
+            border-top: 10px solid #8e1c1c; /* Borde superior más grueso */
         }
 
-        /* ==== (NUEVO) SECCIÓN CSS DE IMPRESIÓN ==== */
+        /* MEJORA DE INPUTS: Añade un estilo de focus más claro y con el color IPN */
+        .input-stylish {
+            border: 1px solid #d1d5db;
+            transition: all 0.2s;
+        }
+        .input-stylish:focus {
+            border-color: #8e1c1c !important; /* Rojo IPN en focus */
+            box-shadow: 0 0 0 3px rgba(142, 28, 28, 0.25) !important;
+            outline: none;
+        }
+
+        /* AJUSTES PARA IMPRESIÓN */
         @media print {
-            /* Oculta todo lo que tenga la clase 'no-print' */
             .no-print {
                 display: none !important;
             }
-            
-            /* Resetea el cuerpo para imprimir */
             body {
                 padding: 0;
                 margin: 0;
                 background-color: #ffffff;
+                background-image: none; /* Elimina el fondo estético al imprimir */
             }
-            
-            /* Ajusta el contenedor principal para impresión */
             .main-container {
                 max-width: 100% !important;
                 box-shadow: none !important;
@@ -59,27 +73,78 @@
                 padding: 0 !important;
                 margin: 0 !important;
             }
-
-            /* Asegura que el encabezado y los resultados sean visibles */
             header, #results-section {
                 display: block !important;
             }
-            
-            /* Asegura que los colores de riesgo se impriman */
             .risk-low, .risk-moderate, .risk-high, .risk-very-high {
                 -webkit-print-color-adjust: exact !important;
                 print-color-adjust: exact !important;
                 background-color: inherit;
             }
         }
-        /* ==== FIN DE SECCIÓN DE IMPRESIÓN ==== */
     </style>
 </head>
 <body class="p-4 md:p-8">
 
+    <!-- === AVISO DE PRIVACIDAD (OBLIGATORIO ANTES DE FORMULARIO) === -->
+    <div id="privacy-overlay" class="fixed inset-0 bg-gray-900 bg-opacity-90 flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl p-8 mx-4 border-t-8 ipn-border overflow-y-auto max-h-[90vh]">
+            <!-- TÍTULO MEJORADO CON ICONO -->
+            <h2 class="text-2xl md:text-3xl font-extrabold ipn-accent mb-4 text-center">🛡️ Aviso de Privacidad y Uso de Datos Personales</h2>
+            <p class="text-gray-700 text-sm leading-relaxed mb-3">
+                El <strong>Laboratorio de Investigación Cardiometabólica (LICAM)</strong> del <strong>Instituto Politécnico Nacional (IPN)</strong>, es responsable del tratamiento de los datos personales que usted proporcione en esta <strong>Calculadora de Riesgo Cardiometabólico</strong>.
+            </p>
+            <p class="text-gray-700 text-sm leading-relaxed mb-3">
+                Sus datos serán utilizados <strong>únicamente con fines estadísticos, académicos y de investigación científica</strong> para el análisis de riesgo cardiometabólico en la población participante del Segundo Simposio de Medicina. 
+                La información será manejada de forma <strong>anónima y confidencial</strong>, conforme a la <em>Ley Federal de Protección de Datos Personales en Posesión de los Particulares (LFPDPPP)</em>.
+            </p>
+            <ul class="text-gray-700 text-sm list-disc ml-5 mb-3">
+                <li>No se compartirá su información con terceros ajenos al IPN.</li>
+                <li>Los resultados serán presentados de manera agrupada y sin identificar individualmente a los participantes.</li>
+                <li>Usted puede ejercer sus derechos ARCO (Acceso, Rectificación, Cancelación y Oposición) contactando a: <strong>nnajerag@ipn.mx</strong>.</li>
+            </ul>
+            <p class="text-gray-700 text-sm leading-relaxed mb-3">
+                Al continuar, usted declara haber leído y comprendido este aviso, otorgando su consentimiento para el uso descrito de sus datos con fines de investigación y análisis científico.
+            </p>
+
+            <div class="flex items-center justify-center space-x-2 mt-6">
+                <input type="checkbox" id="acceptPrivacy" class="h-5 w-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
+                <label for="acceptPrivacy" class="text-base text-gray-800 font-semibold select-none">He leído y acepto el Aviso de Privacidad.</label>
+            </div>
+            <!-- BOTÓN MEJORADO ESTÉTICAMENTE -->
+            <div class="mt-8 flex justify-center">
+                <button id="continueBtn" disabled class="bg-gray-400 cursor-not-allowed text-white font-extrabold py-3 px-8 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105">
+                    Continuar al Formulario 🚀
+                </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-4 text-center italic">Última actualización: noviembre 2025 · © LICAM-IPN</p>
+        </div>
+    </div>
+
+    <script>
+        // === Lógica del Aviso de Privacidad (SIN MODIFICACIONES) ===
+        const checkbox = document.getElementById("acceptPrivacy");
+        const continueBtn = document.getElementById("continueBtn");
+        const overlay = document.getElementById("privacy-overlay");
+
+        checkbox.addEventListener("change", () => {
+            continueBtn.disabled = !checkbox.checked;
+            continueBtn.classList.toggle("bg-gray-400", !checkbox.checked);
+            continueBtn.classList.toggle("cursor-not-allowed", !checkbox.checked);
+            /* Uso de la clase IPN mejorada */
+            continueBtn.classList.toggle("ipn-bg", checkbox.checked);
+            continueBtn.classList.toggle("hover:bg-red-800", checkbox.checked);
+        });
+
+        continueBtn.addEventListener("click", () => {
+            overlay.classList.add("hidden");
+        });
+    </script>
+
     <div class="main-container">
         <header class="mb-10 border-b pb-4">
             <div class="grid grid-cols-3 items-center justify-between">
+                <!-- LOGO IZQUIERDO RESTAURADO -->
                 <div class="flex justify-start">
                     <a href="https://www.esm.ipn.mx/" target="_blank" title="Escuela Superior de Medicina - IPN">
                         <img src="logo_esm.png" alt="Logo ESM" class="h-16 w-16 md:h-20 md:w-20 object-contain shadow-md">
@@ -87,14 +152,16 @@
                 </div>
 
                 <div class="text-center col-span-1">
-                    <h1 class="text-2xl md:text-3xl font-extrabold ipn-accent leading-tight">
+                    <!-- TÍTULO MÁS GRANDE Y AMIGABLE (Aesthetic change kept) -->
+                    <h1 class="text-3xl md:text-4xl font-extrabold ipn-accent leading-tight">
                         Calculadora de Riesgo Cardiometabólico
                     </h1>
-                    <p class="text-sm md:text-md text-gray-700 mt-1 no-print">
-                        Proyecto de Tesis - Ingeniería en Biotecnología
+                    <p class="text-sm md:text-md text-gray-600 mt-2 no-print font-semibold">
+                        Proyecto de Tesis - <span class="ipn-accent">Ingeniería en Biotecnología</span>
                     </p>
                 </div>
 
+                <!-- LOGOS DERECHOS RESTAURADOS -->
                 <div class="flex justify-end items-center space-x-4">
                     <a href="https://www.ipn.mx/" target="_blank" title="Instituto Politécnico Nacional">
                         <img src="logo_ipn.png" alt="Logo IPN" class="h-16 w-16 md:h-20 md:w-20 object-contain shadow-lg">
@@ -107,157 +174,163 @@
         </header>
 
         <form id="calc-form" class="no-print">
-            <div id="validation-message" class="hidden p-3 mb-4 rounded-lg bg-red-100 text-red-700 font-semibold"></div>
+            <div id="validation-message" class="hidden p-3 mb-4 rounded-lg bg-red-100 text-red-700 font-semibold border-l-4 border-red-500 shadow-md"></div>
             <div id="input-form">
                 
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">1. Datos Personales</h2>
+                <!-- SECCIÓN 1: Datos Personales con Icono -->
+                <h2 class="text-2xl font-extrabold text-gray-800 mb-4 border-b-2 ipn-border pb-2">👤 1. Datos Personales</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div>
-                        <label for="full_name" class="block text-sm font-medium text-gray-700">Nombre Completo</label>
-                        <input type="text" id="full_name" placeholder="Nombre(s) Apellido(s)" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2 border">
+                        <label for="full_name" class="block text-sm font-bold text-gray-700">Nombre Completo</label>
+                        <input type="text" id="full_name" placeholder="Nombre(s) Apellido(s)" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="birth_date" class="block text-sm font-medium text-gray-700">Fecha de Nacimiento</label>
-                        <input type="date" id="birth_date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2 border">
+                        <label for="birth_date" class="block text-sm font-bold text-gray-700">📅 Fecha de Nacimiento</label>
+                        <input type="date" id="birth_date" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="gender" class="block text-sm font-medium text-gray-700">Sexo Biológico</label>
-                        <select id="gender" class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm rounded-md shadow-sm">
+                        <label for="gender" class="block text-sm font-bold text-gray-700">🚻 Sexo Biológico</label>
+                        <select id="gender" class="mt-1 block w-full pl-3 pr-10 py-2 text-base input-stylish focus:outline-none focus:ring-red-500 focus:border-red-500 sm:text-sm rounded-md">
                             <option value="male">Masculino</option>
                             <option value="female">Femenino</option>
                         </select>
                     </div>
                     <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700">Correo Electrónico (Opcional)</label>
-                        <input type="email" id="email" placeholder="ejemplo@correo.com" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 p-2 border">
+                        <label for="email" class="block text-sm font-bold text-gray-700">📧 Correo Electrónico (Opcional)</label>
+                        <input type="email" id="email" placeholder="ejemplo@correo.com" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                 </div>
 
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">2. Signos Vitales y Dinamometría</h2>
+                <!-- SECCIÓN 2: Signos Vitales con Icono -->
+                <h2 class="text-2xl font-extrabold text-gray-800 mb-4 border-b-2 ipn-border pb-2">💖 2. Signos Vitales y Dinamometría</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div>
-                        <label for="hr" class="block text-sm font-medium text-gray-700">Frec. Cardíaca (lpm)</label>
-                        <input type="number" id="hr" placeholder="60-100" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="hr" class="block text-sm font-medium text-gray-700">Frec. Cardíaca (lpm) ❤️</label>
+                        <input type="number" id="hr" placeholder="60-100" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="rr" class="block text-sm font-medium text-gray-700">Frec. Respiratoria (rpm)</label>
-                        <input type="number" id="rr" placeholder="12-20" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="rr" class="block text-sm font-medium text-gray-700">Frec. Respiratoria (rpm) 🌬️</label>
+                        <input type="number" id="rr" placeholder="12-20" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="grip_right" class="block text-sm font-medium text-gray-700">Fuerza Agarre Der. (Kg)</label>
-                        <input type="number" step="0.1" id="grip_right" placeholder="30.5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="grip_right" class="block text-sm font-medium text-gray-700">Fuerza Agarre Der. (Kg) 💪</label>
+                        <input type="number" step="0.1" id="grip_right" placeholder="30.5" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="grip_left" class="block text-sm font-medium text-gray-700">Fuerza Agarre Izq. (Kg)</label>
-                        <input type="number" step="0.1" id="grip_left" placeholder="29.8" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="grip_left" class="block text-sm font-medium text-gray-700">Fuerza Agarre Izq. (Kg) 💪</label>
+                        <input type="number" step="0.1" id="grip_left" placeholder="29.8" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                 </div>
 
-                <h3 class="text-xl font-semibold text-gray-700 mb-3 border-b pb-1">2.1. Presión Arterial (Medición Principal)</h3>
+                <h3 class="text-xl font-bold text-gray-700 mb-3 border-b pb-1">2.1. Presión Arterial (Medición Principal) 🩸</h3>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div>
                         <label for="pas" class="block text-sm font-medium text-gray-700">Presión Sistólica (mmHg)</label>
-                        <input type="number" id="pas" value="120" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <input type="number" id="pas" value="120" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
                         <label for="pad" class="block text-sm font-medium text-gray-700">Presión Diastólica (mmHg)</label>
-                        <input type="number" id="pad" value="80" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <input type="number" id="pad" value="80" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
                         <label for="pa_d2_s" class="block text-sm font-medium text-gray-700">PA Día 2 S/D (Opcional)</label>
                         <div class="flex space-x-2">
-                            <input type="number" id="pa_d2_s" placeholder="Sistólica" class="mt-1 block w-1/2 rounded-md border-gray-300 shadow-sm p-2 border">
-                            <input type="number" id="pa_d2_d" placeholder="Diastólica" class="mt-1 block w-1/2 rounded-md border-gray-300 shadow-sm p-2 border">
+                            <input type="number" id="pa_d2_s" placeholder="Sistólica" class="mt-1 block w-1/2 rounded-md input-stylish p-2 border">
+                            <input type="number" id="pa_d2_d" placeholder="Diastólica" class="mt-1 block w-1/2 rounded-md input-stylish p-2 border">
                         </div>
                     </div>
                     <div>
                         <label for="pa_d3_s" class="block text-sm font-medium text-gray-700">PA Día 3 S/D (Opcional)</label>
                         <div class="flex space-x-2">
-                            <input type="number" id="pa_d3_s" placeholder="Sistólica" class="mt-1 block w-1/2 rounded-md border-gray-300 shadow-sm p-2 border">
-                            <input type="number" id="pa_d3_d" placeholder="Diastólica" class="mt-1 block w-1/2 rounded-md border-gray-300 shadow-sm p-2 border">
+                            <input type="number" id="pa_d3_s" placeholder="Sistólica" class="mt-1 block w-1/2 rounded-md input-stylish p-2 border">
+                            <input type="number" id="pa_d3_d" placeholder="Diastólica" class="mt-1 block w-1/2 rounded-md input-stylish p-2 border">
                         </div>
                     </div>
                 </div>
 
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">3. Antropometría</h2>
+                <!-- SECCIÓN 3: Antropometría con Icono -->
+                <h2 class="text-2xl font-extrabold text-gray-800 mb-4 border-b-2 ipn-border pb-2">📏 3. Antropometría</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div>
-                        <label for="height" class="block text-sm font-medium text-gray-700">Estatura (cm)</label>
-                        <input type="number" id="height" value="170" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="height" class="block text-sm font-medium text-gray-700">Estatura (cm) ⬆️</label>
+                        <input type="number" id="height" value="170" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="weight" class="block text-sm font-medium text-gray-700">Peso (kg)</label>
-                        <input type="number" id="weight" value="75" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="weight" class="block text-sm font-medium text-gray-700">Peso (kg) ⚖️</label>
+                        <input type="number" id="weight" value="75" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="waist" class="block text-sm font-medium text-gray-700">Perímetro Cintura (cm)</label>
-                        <input type="number" id="waist" value="90" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="waist" class="block text-sm font-medium text-gray-700">Perímetro Cintura (cm) ⭕</label>
+                        <input type="number" id="waist" value="90" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="hip" class="block text-sm font-medium text-gray-700">Perímetro Cadera (cm)</label>
-                        <input type="number" id="hip" value="100" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="hip" class="block text-sm font-medium text-gray-700">Perímetro Cadera (cm) 🍑</label>
+                        <input type="number" id="hip" value="100" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                 </div>
 
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">4. Parámetros Bioquímicos</h2>
+                <!-- SECCIÓN 4: Bioquímicos con Icono -->
+                <h2 class="text-2xl font-extrabold text-gray-800 mb-4 border-b-2 ipn-border pb-2">🧪 4. Parámetros Bioquímicos</h2>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div>
-                        <label for="glucose" class="block text-sm font-medium text-gray-700">Glucosa Ayunas (mg/dL)</label>
-                        <input type="number" id="glucose" value="90" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="glucose" class="block text-sm font-medium text-gray-700">Glucosa Ayunas (mg/dL) 🍬</label>
+                        <input type="number" id="glucose" value="90" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="hba1c" class="block text-sm font-medium text-gray-700">HbA1c (%) (Opcional)</label>
-                        <input type="number" step="0.1" id="hba1c" placeholder="5.7" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="hba1c" class="block text-sm font-medium text-gray-700">HbA1c (%) (Opcional) 📊</label>
+                        <input type="number" step="0.1" id="hba1c" placeholder="5.7" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="total_chol" class="block text-sm font-medium text-gray-700">Colesterol Total (mg/dL)</label>
-                        <input type="number" id="total_chol" placeholder="180" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="total_chol" class="block text-sm font-medium text-gray-700">Colesterol Total (mg/dL) 🥓</label>
+                        <input type="number" id="total_chol" placeholder="180" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="hdl" class="block text-sm font-medium text-gray-700">Colesterol HDL (mg/dL)</label>
-                        <input type="number" id="hdl" value="45" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="hdl" class="block text-sm font-medium text-gray-700">Colesterol HDL (mg/dL) ✨</label>
+                        <input type="number" id="hdl" value="45" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="ldl" class="block text-sm font-medium text-gray-700">Colesterol LDL (mg/dL)</label>
-                        <input type="number" id="ldl" placeholder="110" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="ldl" class="block text-sm font-medium text-gray-700">Colesterol LDL (mg/dL) 💔</label>
+                        <input type="number" id="ldl" placeholder="110" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="triglycerides" class="block text-sm font-medium text-gray-700">Triglicéridos (mg/dL)</label>
-                        <input type="number" id="triglycerides" value="140" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="triglycerides" class="block text-sm font-medium text-gray-700">Triglicéridos (mg/dL) 🍟</label>
+                        <input type="number" id="triglycerides" value="140" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                 </div>
 
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">5. Composición Corporal (Opcional, si usa BIA)</h2>
-                <p class="text-sm text-gray-500 -mt-3 mb-3 italic">Llenar solo si tiene datos de una báscula de Bioimpedancia (BIA). Estos campos no se calculan solos.</p>
+                <!-- SECCIÓN 5: Composición Corporal con Icono -->
+                <h2 class="text-2xl font-extrabold text-gray-800 mb-4 border-b-2 ipn-border pb-2">🏋️ 5. Composición Corporal (Opcional, si usa BIA)</h2>
+                <p class="text-sm text-gray-600 -mt-3 mb-4 italic p-2 bg-gray-100 rounded-md">Llenar solo si tiene datos de una báscula de Bioimpedancia (BIA). Estos campos no se calculan solos.</p>
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-6 mb-6">
                     <div>
-                        <label for="bia_fat_p" class="block text-sm font-medium text-gray-700">% Grasa Corporal</label>
-                        <input type="number" step="0.1" id="bia_fat_p" placeholder="25.5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="bia_fat_p" class="block text-sm font-medium text-gray-700">% Grasa Corporal 🧍</label>
+                        <input type="number" step="0.1" id="bia_fat_p" placeholder="25.5" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="bia_muscle_p" class="block text-sm font-medium text-gray-700">% Músculo</label>
-                        <input type="number" step="0.1" id="bia_muscle_p" placeholder="34.0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="bia_muscle_p" class="block text-sm font-medium text-gray-700">% Músculo 💪</label>
+                        <input type="number" step="0.1" id="bia_muscle_p" placeholder="34.0" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="bia_visceral_p" class="block text-sm font-medium text-gray-700">% Grasa Visceral</label>
-                        <input type="number" step="0.1" id="bia_visceral_p" placeholder="9" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="bia_visceral_p" class="block text-sm font-medium text-gray-700">% Grasa Visceral 🔥</label>
+                        <input type="number" step="0.1" id="bia_visceral_p" placeholder="9" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="bia_water_p" class="block text-sm font-medium text-gray-700">% Agua</label>
-                        <input type="number" step="0.1" id="bia_water_p" placeholder="55.0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="bia_water_p" class="block text-sm font-medium text-gray-700">% Agua 💧</label>
+                        <input type="number" step="0.1" id="bia_water_p" placeholder="55.0" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
-                        <label for="bia_metabolic_age" class="block text-sm font-medium text-gray-700">Edad Metabólica</label>
-                        <input type="number" id="bia_metabolic_age" placeholder="40" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="bia_metabolic_age" class="block text-sm font-medium text-gray-700">Edad Metabólica ⏳</label>
+                        <input type="number" id="bia_metabolic_age" placeholder="40" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                 </div>
 
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">6. Estilo de Vida</h2>
-                <h3 class="text-xl font-semibold text-gray-700 mb-3 border-b pb-1">6.1. Actividad Física</h3>
+                <!-- SECCIÓN 6: Estilo de Vida con Icono -->
+                <h2 class="text-2xl font-extrabold text-gray-800 mb-4 border-b-2 ipn-border pb-2">🍎 6. Estilo de Vida</h2>
+                <h3 class="text-xl font-bold text-gray-700 mb-3 border-b pb-1">6.1. Actividad Física 🏃</h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <div>
                         <label for="activity_days" class="block text-sm font-medium text-gray-700">Días de ejercicio/semana</label>
-                        <select id="activity_days" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <select id="activity_days" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                             <option value="0">0 (Sedentario)</option>
                             <option value="2">1-2 días</option>
                             <option value="3.5">3-4 días</option>
@@ -266,22 +339,22 @@
                     </div>
                     <div>
                         <label for="activity_duration" class="block text-sm font-medium text-gray-700">Duración promedio (min/día)</label>
-                        <input type="number" id="activity_duration" placeholder="30" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <input type="number" id="activity_duration" placeholder="30" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
                         <label for="activity_intensity" class="block text-sm font-medium text-gray-700">Intensidad Principal</label>
-                        <select id="activity_intensity" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                            <option value="light">Ligera (Caminar)</option>
-                            <option value="moderate">Moderada (Trotar, Bici)</option>
-                            <option value="vigorous">Vigorosa (Correr, HIIT)</option>
+                        <select id="activity_intensity" class="mt-1 block w-full rounded-md input-stylish p-2 border">
+                            <option value="light">Ligera (Caminar) 🚶</option>
+                            <option value="moderate">Moderada (Trotar, Bici) 🚴</option>
+                            <option value="vigorous">Vigorosa (Correr, HIIT) 💥</option>
                         </select>
                     </div>
                 </div>
-                <h3 class="text-xl font-semibold text-gray-700 mb-3 border-b pb-1">6.2. Tabaquismo</h3>
+                <h3 class="text-xl font-bold text-gray-700 mb-3 border-b pb-1">6.2. Tabaquismo 🚬</h3>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div>
                         <label for="smoker_status" class="block text-sm font-medium text-gray-700">Estado</label>
-                        <select id="smoker_status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <select id="smoker_status" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                             <option value="never">Nunca he fumado</option>
                             <option value="ex_smoker">Ex-fumador</option>
                             <option value="active">Fumador Actual</option>
@@ -289,25 +362,25 @@
                     </div>
                     <div>
                         <label for="smoker_passive" class="block text-sm font-medium text-gray-700">Fumador Pasivo</label>
-                        <select id="smoker_passive" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <select id="smoker_passive" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                             <option value="no">No</option>
                             <option value="yes">Sí (convive con fumadores)</option>
                         </select>
                     </div>
                     <div>
                         <label for="smoker_years" class="block text-sm font-medium text-gray-700">Años fumando (si aplica)</label>
-                        <input type="number" id="smoker_years" placeholder="10" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <input type="number" id="smoker_years" placeholder="10" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
                         <label for="smoker_daily_avg" class="block text-sm font-medium text-gray-700">Cigarrillos/día (promedio)</label>
-                        <input type="number" id="smoker_daily_avg" placeholder="5" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <input type="number" id="smoker_daily_avg" placeholder="5" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                 </div>
-                <h3 class="text-xl font-semibold text-gray-700 mb-3 border-b pb-1">6.3. Consumo de Alcohol</h3>
+                <h3 class="text-xl font-bold text-gray-700 mb-3 border-b pb-1">6.3. Consumo de Alcohol 🍻</h3>
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                     <div>
                         <label for="alcohol_freq" class="block text-sm font-medium text-gray-700">Frecuencia de consumo</label>
-                        <select id="alcohol_freq" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <select id="alcohol_freq" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                             <option value="none">Nunca o casi nunca</option>
                             <option value="monthly">1-3 veces al mes</option>
                             <option value="weekly">1-2 veces por semana</option>
@@ -316,66 +389,67 @@
                     </div>
                     <div>
                         <label for="alcohol_dose" class="block text-sm font-medium text-gray-700">Dosis (Bebidas estándar/día)</label>
-                        <input type="number" id="alcohol_dose" placeholder="2" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <input type="number" id="alcohol_dose" placeholder="2" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                     </div>
                     <div>
                         <label for="alcohol_type" class="block text-sm font-medium text-gray-700">Tipo de alcohol principal</label>
-                        <select id="alcohol_type" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
-                            <option value="beer">Cerveza</option>
-                            <option value="wine">Vino</option>
-                            <option value="spirit">Destilados (Tequila, Ron, etc.)</option>
-                            <option value="mixed">Combinado</option>
+                        <select id="alcohol_type" class="mt-1 block w-full rounded-md input-stylish p-2 border">
+                            <option value="beer">Cerveza 🍺</option>
+                            <option value="wine">Vino 🍷</option>
+                            <option value="spirit">Destilados (Tequila, Ron, etc.) 🥃</option>
+                            <option value="mixed">Combinado 🍹</option>
                         </select>
                     </div>
                 </div>
                 
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">7. Diagnósticos y Tratamiento</h2>
+                <!-- SECCIÓN 7: Diagnósticos con Icono y Contenedores resaltados -->
+                <h2 class="text-2xl font-extrabold text-gray-800 mb-4 border-b-2 ipn-border pb-2">🏥 7. Diagnósticos y Tratamiento</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-6">
-                    <div class="p-3 border rounded-md bg-gray-50">
-                        <label class="block text-base font-semibold text-gray-700">Diabetes Mellitus (DM)</label>
-                        <div class="mt-2 space-y-2">
+                    <div class="p-4 border-2 rounded-xl bg-red-50/70 border-red-300 shadow-md">
+                        <label class="block text-base font-extrabold text-red-800">Diabetes Mellitus (DM) 🩸</label>
+                        <div class="mt-2 space-y-2 text-sm">
                             <div>
-                                <input type="radio" id="dm_no" name="dm_status" value="no" checked> <label for="dm_no">No diagnosticado</label>
+                                <input type="radio" id="dm_no" name="dm_status" value="no" checked> <label for="dm_no" class="font-medium">No diagnosticado</label>
                             </div>
                             <div>
-                                <input type="radio" id="dm_yes" name="dm_status" value="yes"> <label for="dm_yes">Sí diagnosticado</label>
+                                <input type="radio" id="dm_yes" name="dm_status" value="yes"> <label for="dm_yes" class="font-medium">Sí diagnosticado</label>
                             </div>
-                            <label for="med_dm" class="block text-sm font-medium text-gray-700 mt-2">¿Toma Metformina, Glibenclamida, Insulina u otro?</label>
-                            <select id="med_dm" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                            <label for="med_dm" class="block text-sm font-semibold text-gray-700 mt-2">¿Toma Metformina, Glibenclamida, Insulina u otro?</label>
+                            <select id="med_dm" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                                 <option value="no">No</option>
                                 <option value="yes_freq">Sí, frecuentemente</option>
                                 <option value="yes_rare">Sí, ocasionalmente</option>
                             </select>
                         </div>
                     </div>
-                    <div class="p-3 border rounded-md bg-gray-50">
-                        <label class="block text-base font-semibold text-gray-700">Hipertensión (HTA)</label>
-                        <div class="mt-2 space-y-2">
+                    <div class="p-4 border-2 rounded-xl bg-red-50/70 border-red-300 shadow-md">
+                        <label class="block text-base font-extrabold text-red-800">Hipertensión (HTA) 🌡️</label>
+                        <div class="mt-2 space-y-2 text-sm">
                             <div>
-                                <input type="radio" id="hta_no" name="hta_status" value="no" checked> <label for="hta_no">No diagnosticado</label>
+                                <input type="radio" id="hta_no" name="hta_status" value="no" checked> <label for="hta_no" class="font-medium">No diagnosticado</label>
                             </div>
                             <div>
-                                <input type="radio" id="hta_yes" name="hta_status" value="yes"> <label for="hta_yes">Sí diagnosticado</label>
+                                <input type="radio" id="hta_yes" name="hta_status" value="yes"> <label for="hta_yes" class="font-medium">Sí diagnosticado</label>
                             </div>
-                            <label for="med_hta" class="block text-sm font-medium text-gray-700 mt-2">¿Toma Losartán, Captopril, Amlodipino u otro?</label>
-                            <select id="med_hta" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                            <label for="med_hta" class="block text-sm font-semibold text-gray-700 mt-2">¿Toma Losartán, Captopril, Amlodipino u otro?</label>
+                            <select id="med_hta" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                                 <option value="no">No</option>
                                 <option value="yes_freq">Sí, frecuentemente</option>
                                 <option value="yes_rare">Sí, ocasionalmente</option>
                             </select>
                         </div>
                     </div>
-                    <div class="p-3 border rounded-md bg-gray-50">
-                        <label class="block text-base font-semibold text-gray-700">Dislipidemia (Colesterol/TG altos)</label>
-                        <div class="mt-2 space-y-2">
+                    <div class="p-4 border-2 rounded-xl bg-red-50/70 border-red-300 shadow-md">
+                        <label class="block text-base font-extrabold text-red-800">Dislipidemia (Colesterol/TG altos) 🍔</label>
+                        <div class="mt-2 space-y-2 text-sm">
                             <div>
-                                <input type="radio" id="dlp_no" name="dlp_status" value="no" checked> <label for="dlp_no">No diagnosticado</label>
+                                <input type="radio" id="dlp_no" name="dlp_status" value="no" checked> <label for="dlp_no" class="font-medium">No diagnosticado</label>
                             </div>
                             <div>
-                                <input type="radio" id="dlp_yes" name="dlp_status" value="yes"> <label for="dlp_yes">Sí diagnosticado</label>
+                                <input type="radio" id="dlp_yes" name="dlp_status" value="yes"> <label for="dlp_yes" class="font-medium">Sí diagnosticado</label>
                             </div>
-                            <label for="med_dlp" class="block text-sm font-medium text-gray-700 mt-2">¿Toma Estatinas (Atorva, Rosuva) o Fibratos?</label>
-                            <select id="med_dlp" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                            <label for="med_dlp" class="block text-sm font-semibold text-gray-700 mt-2">¿Toma Estatinas (Atorva, Rosuva) o Fibratos?</label>
+                            <select id="med_dlp" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                                 <option value="no">No</option>
                                 <option value="yes_freq">Sí, frecuentemente</option>
                                 <option value="yes_rare">Sí, ocasionalmente</option>
@@ -384,25 +458,26 @@
                     </div>
                 </div>
 
-                <h2 class="text-2xl font-semibold text-gray-700 mb-4 border-b pb-2">8. Historial Cardiovascular</h2>
+                <!-- SECCIÓN 8: Historial con Icono -->
+                <h2 class="text-2xl font-extrabold text-gray-800 mb-4 border-b-2 ipn-border pb-2">📜 8. Historial Cardiovascular</h2>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                     <div>
-                        <label for="history_mi" class="block text-sm font-medium text-gray-700">¿Ha sido diagnosticado con un Infarto?</label>
-                        <select id="history_mi" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="history_mi" class="block text-sm font-medium text-gray-700">¿Ha sido diagnosticado con un Infarto? 💔</label>
+                        <select id="history_mi" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                             <option value="no">No</option>
                             <option value="yes">Sí</option>
                         </select>
                     </div>
                     <div>
-                        <label for="history_angina" class="block text-sm font-medium text-gray-700">¿Ha sentido dolor opresivo en el pecho al esforzarse (Angina)?</label>
-                        <select id="history_angina" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="history_angina" class="block text-sm font-medium text-gray-700">¿Ha sentido dolor opresivo en el pecho al esforzarse (Angina)? 🩺</label>
+                        <select id="history_angina" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                             <option value="no">No</option>
                             <option value="yes">Sí</option>
                         </select>
                     </div>
                     <div>
-                        <label for="family_history" class="block text-sm font-medium text-gray-700">Antecedentes Familiares (Padres/Hermanos con ECV o DM)</label>
-                        <select id="family_history" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        <label for="family_history" class="block text-sm font-medium text-gray-700">Antecedentes Familiares (Padres/Hermanos con ECV o DM) 👨‍👩‍👧‍👦</label>
+                        <select id="family_history" class="mt-1 block w-full rounded-md input-stylish p-2 border">
                             <option value="no">No</option>
                             <option value="yes">Sí</option>
                         </select>
@@ -411,67 +486,70 @@
 
                 <div id="sheet-status" class="text-center p-3 mt-4 rounded-lg text-sm hidden"></div>
 
-                <button id="calculate-button" class="w-full mt-4 py-3 px-6 border border-transparent rounded-lg shadow-glow text-lg font-medium text-white ipn-bg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-150 ease-in-out">
-                    Calcular Riesgo Cardiovascular Integral
+                <!-- BOTÓN DE CÁLCULO MEJORADO -->
+                <button id="calculate-button" class="w-full mt-8 py-4 px-6 border border-transparent rounded-xl shadow-glow text-xl font-extrabold text-white ipn-bg hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition duration-300 ease-in-out transform hover:scale-[1.01]">
+                    Calcular Riesgo Cardiovascular Integral 🚀
                 </button>
             </div>
         </form>
 
         <div id="results-section" class="hidden mt-10">
-            <h2 class="text-3xl font-bold ipn-accent mb-6 border-b-4 ipn-border pb-3">4. Resultados y Plan de Acción</h2>
+            <!-- TÍTULO DE RESULTADOS MÁS VIBRANTE -->
+            <h2 class="text-3xl font-extrabold ipn-accent mb-8 border-b-4 ipn-border pb-3">✅ 4. Resultados y Plan de Acción Personalizado</h2>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
-                <div class="p-6 rounded-xl border-2 space-y-4">
-                    <h3 class="text-xl font-semibold mb-3 ipn-accent">Perfil de Riesgo</h3>
-                    <div id="global-risk-result" class="text-center p-4 rounded-lg font-bold text-2xl mb-4 transition duration-300"></div>
+                <div class="p-8 rounded-3xl border-4 border-gray-100 shadow-xl space-y-6 bg-white">
+                    <h3 class="text-2xl font-extrabold mb-4 ipn-accent border-b pb-2">Perfil de Riesgo 📊</h3>
+                    <!-- Resultado Global con Sombra de Resplandor y tipografía grande -->
+                    <div id="global-risk-result" class="text-center p-6 rounded-xl font-extrabold text-3xl mb-4 transition duration-300 shadow-glow"></div>
                     
-                    <div>
-                        <h4 class="font-semibold text-gray-700">Métricas Antropométricas:</h4>
-                        <ul class="list-disc list-inside text-sm text-gray-600">
-                            <li><span class="font-medium">Edad:</span> <span id="res-age"></span> años</li>
-                            <li><span class="font-medium">IMC:</span> <span id="res-bmi-val"></span> <span id="res-bmi-class" class="font-bold"></span></li>
-                            <li><span class="font-medium">Índice Cintura-Cadera (ICC):</span> <span id="res-icc-val"></span> <span id="res-icc-class" class="font-bold"></span></li>
+                    <div class="p-4 bg-gray-50 rounded-lg border">
+                        <h4 class="font-bold text-gray-800 text-lg mb-2">Métricas Antropométricas 🧍:</h4>
+                        <ul class="list-disc list-inside text-base text-gray-700 space-y-1">
+                            <li><span class="font-extrabold">Edad:</span> <span id="res-age"></span> años</li>
+                            <li><span class="font-extrabold">IMC:</span> <span id="res-bmi-val"></span> <span id="res-bmi-class" class="font-extrabold"></span></li>
+                            <li><span class="font-extrabold">Índice Cintura-Cadera (ICC):</span> <span id="res-icc-val"></span> <span id="res-icc-class" class="font-extrabold"></span></li>
                         </ul>
                     </div>
 
-                    <div>
-                        <h4 class="font-semibold text-gray-700">Métricas Bioquímicas (Índices):</h4>
-                        <ul class="list-disc list-inside text-sm text-gray-600">
-                            <li><span class="font-medium">Índice TG/HDL:</span> <span id="res-tg-hdl-val"></span> <span id="res-tg-hdl-class" class="font-bold"></span></li>
-                            <li><span class="font-medium">Índice Col Total/HDL:</span> <span id="res-chol-hdl-val"></span> <span id="res-chol-hdl-class" class="font-bold"></span></li>
-                            <li><span class="font-medium">MASLD (FLI Score):</span> <span id="res-fli-val"></span> <span id="res-fli-class" class="font-bold"></span></li>
+                    <div class="p-4 bg-gray-50 rounded-lg border">
+                        <h4 class="font-bold text-gray-800 text-lg mb-2">Métricas Bioquímicas (Índices) 🧪:</h4>
+                        <ul class="list-disc list-inside text-base text-gray-700 space-y-1">
+                            <li><span class="font-extrabold">Índice TG/HDL (Resistencia a Insulina):</span> <span id="res-tg-hdl-val"></span> <span id="res-tg-hdl-class" class="font-extrabold"></span></li>
+                            <li><span class="font-extrabold">Índice Col Total/HDL:</span> <span id="res-chol-hdl-val"></span> <span id="res-chol-hdl-class" class="font-extrabold"></span></li>
+                            <li><span class="font-extrabold">MASLD (Riesgo Hígado Graso):</span> <span id="res-fli-val"></span> <span id="res-fli-class" class="font-extrabold"></span></li>
                         </ul>
                     </div>
 
-                    <div>
-                        <h4 class="font-semibold text-gray-700">Estilo de Vida y Fuerza:</h4>
-                        <ul class="list-disc list-inside text-sm text-gray-600">
-                            <li><span class="font-medium">Índice Tabáquico (IPA):</span> <span id="res-ipa-val"></span> <span id="res-ipa-class" class="font-bold"></span></li>
-                            <li><span class="font-medium">Actividad Física:</span> <span id="res-activity-class" class="font-bold"></span></li>
-                            <li><span class="font-medium">Fuerza de Agarre:</span> <span id="res-grip-class" class="font-bold"></span></li>
+                    <div class="p-4 bg-gray-50 rounded-lg border">
+                        <h4 class="font-bold text-gray-800 text-lg mb-2">Estilo de Vida y Fuerza 🏃:</h4>
+                        <ul class="list-disc list-inside text-base text-gray-700 space-y-1">
+                            <li><span class="font-extrabold">Índice Tabáquico (IPA):</span> <span id="res-ipa-val"></span> <span id="res-ipa-class" class="font-extrabold"></span></li>
+                            <li><span class="font-extrabold">Actividad Física:</span> <span id="res-activity-class" class="font-extrabold"></span></li>
+                            <li><span class="font-extrabold">Fuerza de Agarre:</span> <span id="res-grip-class" class="font-extrabold"></span></li>
                         </ul>
                     </div>
                 </div>
 
-                <div class="space-y-6">
-                    <div class="p-6 rounded-xl border-2 bg-gray-50">
-                        <h3 class="text-xl font-semibold mb-3 ipn-accent">Factores Clave</h3>
-                        <ul id="risk-factors-list" class="space-y-2 text-sm text-gray-700">
+                <div class="space-y-8">
+                    <div class="p-6 rounded-2xl border-4 border-red-200 bg-red-50/70 shadow-lg">
+                        <h3 class="text-2xl font-extrabold mb-4 ipn-accent border-b pb-2">Factores Clave de Riesgo 🔥</h3>
+                        <ul id="risk-factors-list" class="space-y-3 text-base text-gray-700 list-disc ml-5">
                             </ul>
                     </div>
 
-                    <div class="p-6 rounded-xl border-2 border-green-500 bg-green-50">
-                        <h3 class="text-2xl font-bold mb-4 text-green-700">Plan de Acción Personalizado</h3>
-                        <ul id="recommendations-list" class="space-y-3 text-gray-800 list-disc ml-5">
+                    <div class="p-6 rounded-2xl border-4 border-emerald-500 bg-emerald-50/70 shadow-lg">
+                        <h3 class="text-2xl font-extrabold mb-4 text-emerald-800 border-b border-emerald-500 pb-2">Plan de Acción Personalizado 🎯</h3>
+                        <ul id="recommendations-list" class="space-y-3 text-gray-800 list-disc ml-5 text-base">
                             </ul>
                     </div>
                 </div>
             </div>
 
-            <div class="mt-8 no-print">
-                <button id="print-button" class="w-full py-2 px-4 border border-blue-600 rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition duration-150 ease-in-out">
-                    Imprimir Reporte (PDF)
+            <div class="mt-10 no-print">
+                <button id="print-button" class="w-full py-3 px-4 border border-blue-600 rounded-xl shadow-md text-lg font-medium text-white bg-blue-600 hover:bg-blue-700 transition duration-150 ease-in-out transform hover:scale-[1.005]">
+                    🖨️ Imprimir Reporte (PDF)
                 </button>
             </div>
 
@@ -481,60 +559,61 @@
         </div>
 
         <div class="border-t pt-4 mt-8 no-print"></div> 
-        <div id="project-info" class="p-4 bg-gray-50 rounded-lg text-sm no-print">
-             <h3 class="font-bold text-lg ipn-accent mb-2 border-b pb-1">Información del Proyecto y Colaboradores</h3>
-             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <div>
-                     <p class="font-semibold text-gray-700">Presenta y Asesoría:</p>
-                     <p class="text-gray-600"><strong>Edsel Yahvi Méndez Hernández</strong></p>
-                     <p class="text-gray-600">Asesora Externa: Dra. Nayelli Nájera García</p>
-                     <p class="text-gray-600">Asesor Interno (Docente): Dr. Bustos García Juan Roberto Israel</p>
-                     <p class="font-semibold text-gray-700 mt-2">Institución:</p>
-                     <p class="text-gray-600">
-                         <a href="https://www.esm.ipn.mx/" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
-                              Escuela Superior de Medicina (ESM) - IPN
-                         </a>
-                     </p>
-                 </div>
-                 <div>
-                     <p class="font-semibold text-gray-700">Laboratorio Colaborador (LICAM):</p>
-                     <p class="text-gray-600">Investigación Integral Cardiometabólica (IPN)</p>
-                     
-                     <p class="font-semibold text-gray-700 mt-2">Contacto y Ubicación:</p>
-                     <p class="text-gray-600">
-                         <span class="font-medium">Ubicación:</span> Plan de San Luis y Díaz Mirón s/n Col. Casco de Santo Tomás, Miguel Hidalgo, 11340, Ciudad de México, CDMX.
-                     </p>
-                     <p class="text-gray-600">
-                         <span class="font-medium">Correo:</span> nnajerag@ipn.mx
-                     </p>
-                     <p class="text-gray-600">
-                         <span class="font-medium">Teléfono:</span> 55 5729 6300 ext 62820
-                     </p>
-                     <p class="text-gray-600 mt-2">
-                         <span class="font-medium">Sitio Web/Redes:</span> 
-                         <a href="cemiztli.wixsite.com/cardiometabolismo" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
-                              cemiztli.wixsite.com/cardiometabolismo
-                         </a>,
-                         <a href="https://www.facebook.com/licam.ipn" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
-                              Facebook
-                         </a>,
-                         <a href="https://www.instagram.com/ipn_licam_lab" target="_blank" class="text-pink-600 hover:text-pink-800 font-semibold underline">
-                              Instagram
-                         </a>
-                     </p>
-                 </div>
-             </div>
-         </div>
+        <div id="project-info" class="p-4 bg-gray-100 rounded-xl text-sm no-print shadow-inner">
+            <h3 class="font-bold text-lg ipn-accent mb-2 border-b pb-1">Información del Proyecto y Colaboradores 🤝</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="font-semibold text-gray-700">Presenta y Asesoría:</p>
+                    <p class="text-gray-600"><strong>Edsel Yahvi Méndez Hernández</strong></p>
+                    <p class="text-gray-600">Asesora Externa: Dra. Nayelli Nájera García</p>
+                    <p class="text-gray-600">Asesor Interno (Docente): Dr. Bustos García Juan Roberto Israel</p>
+                    <p class="font-semibold text-gray-700 mt-2">Institución:</p>
+                    <p class="text-gray-600">
+                        <a href="https://www.esm.ipn.mx/" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
+                             Escuela Superior de Medicina (ESM) - IPN
+                        </a>
+                    </p>
+                </div>
+                <div>
+                    <p class="font-semibold text-gray-700">Laboratorio Colaborador (LICAM):</p>
+                    <p class="text-gray-600">Investigación Integral Cardiometabólica (IPN)</p>
+                    
+                    <p class="font-semibold text-gray-700 mt-2">Contacto y Ubicación:</p>
+                    <p class="text-gray-600">
+                        <span class="font-medium">Ubicación:</span> Plan de San Luis y Díaz Mirón s/n Col. Casco de Santo Tomás, Miguel Hidalgo, 11340, Ciudad de México, CDMX.
+                    </p>
+                    <p class="text-gray-600">
+                        <span class="font-medium">Correo:</span> nnajerag@ipn.mx
+                    </p>
+                    <p class="text-gray-600">
+                        <span class="font-medium">Teléfono:</span> 55 5729 6300 ext 62820
+                    </p>
+                    <p class="text-gray-600 mt-2">
+                        <span class="font-medium">Sitio Web/Redes:</span> 
+                        <a href="cemiztli.wixsite.com/cardiometabolismo" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
+                             cemiztli.wixsite.com/cardiometabolismo
+                        </a>,
+                        <a href="https://www.facebook.com/licam.ipn" target="_blank" class="ipn-accent hover:text-red-800 font-semibold underline">
+                             Facebook
+                        </a>,
+                        <a href="https://www.instagram.com/ipn_licam_lab" target="_blank" class="text-pink-600 hover:text-pink-800 font-semibold underline">
+                             Instagram
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <button type="button" id="reset-button" class="mt-4 py-2 px-4 border ipn-border rounded-lg shadow-sm text-sm font-medium ipn-accent bg-white hover:bg-red-50 transition duration-150 ease-in-out fixed top-8 right-8 hidden no-print">
+    <!-- BOTÓN DE RESETEO MEJORADO -->
+    <button type="button" id="reset-button" class="mt-4 py-2 px-4 border ipn-border rounded-xl shadow-md text-sm font-bold ipn-accent bg-white hover:bg-red-50 transition duration-150 ease-in-out fixed top-8 right-8 hidden no-print transform hover:scale-105">
         &larr; Calcular Nuevo
     </button>
 
 
     <script>
         // =======================================================
-        // === CALCULADORA DE RIESGO INTEGRAL V2 - LOGIC.JS ====
+        // === CALCULADORA DE RIESGO INTEGRAL V2 - LOGIC.JS (SIN MODIFICACIONES) ====
         // =======================================================
         
         // --- CONFIGURACIÓN DE INTEGRACIÓN CON GOOGLE SHEETS (IMPORTANTE) ---
@@ -1170,7 +1249,8 @@
             // 1. Nivel de Riesgo Global
             const riskDiv = document.getElementById('global-risk-result');
             riskDiv.innerHTML = `${riskProfile.level} (Score: ${riskProfile.score})`;
-            riskDiv.className = `text-center p-4 rounded-lg font-bold text-2xl mb-4 transition duration-300 ${riskProfile.css_class}`;
+            // Aplicamos las nuevas clases de estilo al div de riesgo
+            riskDiv.className = `text-center p-6 rounded-xl font-extrabold text-3xl mb-4 transition duration-300 shadow-glow ${riskProfile.css_class}`;
 
             // 2. Llenar Métricas Calculadas
             document.getElementById('res-age').textContent = inputs.age;
@@ -1204,7 +1284,7 @@
             } else {
                 riskProfile.factors.forEach(factor => {
                     let colorClass = "text-gray-700";
-                    if (factor.class === 'risk-very-high' || factor.class === 'risk-high') colorClass = "text-red-600 font-bold";
+                    if (factor.class === 'risk-very-high' || factor.class === 'risk-high') colorClass = "text-red-700 font-bold"; /* Ajuste de color y negrita */
                     if (factor.class === 'risk-moderate') colorClass = "text-yellow-700 font-semibold";
                     if (factor.class === 'risk-low') colorClass = "text-green-600";
                     
@@ -1218,28 +1298,28 @@
             
             // Recomendaciones basadas en los peores factores
             if (riskProfile.level === "MUY ALTO RIESGO" || riskProfile.level === "ALTO RIESGO") {
-                 recList.innerHTML += `<li class="font-bold text-red-700">Atención Prioritaria: Su perfil indica un riesgo cardiovascular elevado. Es fundamental consultar a un médico especialista a la brevedad.</li>`;
+                 recList.innerHTML += `<li class="font-bold text-red-700">🛑 Atención Prioritaria: Su perfil indica un riesgo cardiovascular elevado. Es fundamental consultar a un médico especialista a la brevedad.</li>`;
             }
             if (riskProfile.factors.some(f => f.text.includes("Diabetes") || f.text.includes("Prediabetes"))) {
-                 recList.innerHTML += `<li>Controlar la glucosa y HbA1c es su prioridad #1. Requiere manejo médico y un plan de alimentación estricto.</li>`;
+                 recList.innerHTML += `<li>🩺 Controlar la glucosa y HbA1c es su prioridad #1. Requiere manejo médico y un plan de alimentación estricto.</li>`;
             }
             if (riskProfile.factors.some(f => f.text.includes("Tabaquismo"))) {
-                 recList.innerHTML += `<li class="font-bold">El cese del tabaquismo es la intervención aislada más importante que puede hacer. Busque apoyo profesional para dejar de fumar.</li>`;
+                 recList.innerHTML += `<li class="font-bold">🚭 El cese del tabaquismo es la intervención aislada más importante que puede hacer. Busque apoyo profesional para dejar de fumar.</li>`;
             }
             if (riskProfile.factors.some(f => f.text.includes("Obesidad Abdominal") || f.text.includes("Sobrepeso"))) {
-                 recList.innerHTML += `<li>La pérdida de peso (5-10% inicial) mejorará drásticamente su presión arterial, glucosa y lípidos. Enfoque en reducir grasa visceral.</li>`;
+                 recList.innerHTML += `<li>⚖️ La pérdida de peso (5-10% inicial) mejorará drásticamente su presión arterial, glucosa y lípidos. Enfoque en reducir grasa visceral.</li>`;
             }
              if (riskProfile.factors.some(f => f.text.includes("Baja Fuerza Muscular"))) {
-                 recList.innerHTML += `<li>Su fuerza es baja (riesgo de sarcopenia). Se recomienda iniciar un **programa de ejercicio de fuerza** (pesas, ligas, lagartijas) 2-3 veces por semana, supervisado.</li>`;
+                 recList.innerHTML += `<li>💪 Su fuerza es baja (riesgo de sarcopenia). Se recomienda iniciar un **programa de ejercicio de fuerza** (pesas, ligas, lagartijas) 2-3 veces por semana, supervisado.</li>`;
             }
             if (riskProfile.factors.some(f => f.text.includes("Sedentarismo"))) {
-                 recList.innerHTML += `<li>Su nivel de actividad es insuficiente. Intente cumplir la meta de 150 minutos de actividad moderada (caminar rápido) por semana.</li>`;
+                 recList.innerHTML += `<li>🏃 Su nivel de actividad es insuficiente. Intente cumplir la meta de 150 minutos de actividad moderada (caminar rápido) por semana.</li>`;
             }
             if (riskProfile.factors.some(f => f.text.includes("MASLD"))) {
-                 recList.innerHTML += `<li>Su riesgo de Hígado Graso es alto. La intervención principal es la **pérdida de peso** y la **reducción drástica de azúcares y harinas refinadas**.</li>`;
+                 recList.innerHTML += `<li>🫄 Su riesgo de Hígado Graso es alto. La intervención principal es la **pérdida de peso** y la **reducción drástica de azúcares y harinas refinadas**.</li>`;
             }
             if (recList.innerHTML === "") {
-                recList.innerHTML = '<li>¡Excelente perfil! Mantenga un estilo de vida saludable y realice chequeos preventivos anuales.</li>';
+                recList.innerHTML = '<li>🎉 ¡Excelente perfil! Mantenga un estilo de vida saludable y realice chequeos preventivos anuales.</li>';
             }
         }
 
