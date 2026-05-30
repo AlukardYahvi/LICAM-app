@@ -196,38 +196,9 @@
             </div>
         </div>
     </header>
-    
     <div class="bg-white shadow-md z-10 sticky top-14">
-        <div class="container mx-auto px-4 border-b border-gray-200">
-<div class="container mx-auto px-4 border-b border-gray-200 flex justify-between items-end">
-    <nav class="flex space-x-1 overflow-x-auto pb-0 w-full" aria-label="Tabs">
-        <button onclick="changeTab('guide')" id="tab-guide" class="tab-button active text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">💡 Guía de Uso</button>
-        <button onclick="changeTab('planner')" id="tab-planner" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">🧪 Organizador de Cultivo</button>
-        <button onclick="changeTab('scheduler')" id="tab-scheduler" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">🗓️ Cronograma Maestro</button>
-        <button onclick="changeTab('cell-counter')" id="tab-cell-counter" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">🔬 Contador AI</button>
-        <button onclick="changeTab('qpcr')" id="tab-qpcr" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2 font-bold text-blue-800">🧬 Análisis qPCR</button>
-        <button onclick="changeTab('models')" id="tab-models" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">🐭 Modelos Animales</button>
-        <button onclick="changeTab('protocols')" id="tab-protocols" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">📚 Protocolos y Recursos</button>
-        <button onclick="changeTab('report')" id="tab-report" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">📄 Reporte</button>
-        <button onclick="changeTab('calculators')" id="tab-calculators" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">🔢 Calculadoras</button>
-        <button onclick="changeTab('about')" id="tab-about" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">ℹ️ Acerca de</button>
-        <button onclick="changeTab('profile')" id="tab-profile" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2 text-indigo-600 font-black">☁️ Perfil en la Nube</button>
-    </nav>
-
-    <div class="relative group pb-3 pl-4">
-        <button class="text-md font-bold text-purple-600 flex items-center space-x-2 whitespace-nowrap bg-purple-50 px-4 py-2 rounded-xl border border-purple-200 hover:bg-purple-100 transition">
-            <span>🎮 Simuladores Pro</span>
-            <i class="fas fa-chevron-down text-xs"></i>
-        </button>
-        <div class="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-            <a href="riesgo.html" target="_blank" class="block px-5 py-4 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-b rounded-t-xl font-semibold">❤️ Riesgo Cardiometabólico</a>
-            <a href="electroforesis.html" target="_blank" class="block px-5 py-4 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-b font-semibold">🧬 Electroforesis</a>
-            <a href="pipeteo.html" target="_blank" class="block px-5 py-4 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-b font-semibold">💧 Micropipeteo</a>
-            <a href="trizol.html" target="_blank" class="block px-5 py-4 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-b-xl font-semibold">🧪 Extracción Trizol</a>
-        </div>
-    </div>
-</div>
-            <nav class="flex space-x-1 overflow-x-auto pb-0" aria-label="Tabs">
+        <div class="container mx-auto px-4 border-b border-gray-200 flex justify-between items-end">
+            <nav class="flex space-x-1 overflow-x-auto pb-0 w-full" aria-label="Tabs">
                 <button onclick="changeTab('guide')" id="tab-guide" class="tab-button active text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">💡 Guía de Uso</button>
                 <button onclick="changeTab('planner')" id="tab-planner" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">🧪 Organizador de Cultivo</button>
                 <button onclick="changeTab('scheduler')" id="tab-scheduler" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">🗓️ Cronograma Maestro</button>
@@ -240,11 +211,21 @@
                 <button onclick="changeTab('about')" id="tab-about" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2">ℹ️ Acerca de</button>
                 <button onclick="changeTab('profile')" id="tab-profile" class="tab-button text-md py-3 px-4 flex-shrink-0 flex items-center space-x-2 text-indigo-600 font-black">☁️ Perfil en la Nube</button>
             </nav>
+
+            <div class="relative group pb-3 pl-4">
+                <button class="text-md font-bold text-purple-600 flex items-center space-x-2 whitespace-nowrap bg-purple-50 px-4 py-2 rounded-xl border border-purple-200 hover:bg-purple-100 transition">
+                    <span>🎮 Simuladores</span>
+                    <i class="fas fa-chevron-down text-xs"></i>
+                </button>
+                <div class="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                    <a href="riesgo.html" target="_blank" class="block px-5 py-4 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-b rounded-t-xl font-semibold">❤️ Riesgo Cardiometabólico</a>
+                    <a href="electroforesis.html" target="_blank" class="block px-5 py-4 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-b font-semibold">🧬 Electroforesis</a>
+                    <a href="pipeteo.html" target="_blank" class="block px-5 py-4 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 border-b font-semibold">💧 Micropipeteo</a>
+                    <a href="trizol.html" target="_blank" class="block px-5 py-4 text-sm text-gray-700 hover:bg-purple-50 hover:text-purple-700 rounded-b-xl font-semibold">🧪 Extracción Trizol</a>
+                </div>
+            </div>
         </div>
     </div>
-
-    <main class="container mx-auto p-4 md:p-8">
-        
         <!-- SECCIÓN: GUÍA DE USO -->
         <div id="content-guide" class="space-y-6 bg-white p-8 rounded-3xl shadow-2xl border border-gray-200">
             <h2 class="text-3xl font-bold text-blue-700 border-b pb-4">💡 Guía de Uso Rápido</h2>
