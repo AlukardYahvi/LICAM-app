@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Electroforesis Pro - Edsel Méndez</title>
+    
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'metric-green': '#2ecc71',
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 3s infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Open Sans', sans-serif; user-select: none; }
+        
+        /* Fondo de laboratorio clínico con azulejos original */
+        .lab-bg-grid {
+            background-size: 50px 50px;
+            background-image: 
+                linear-gradient(to right, rgba(0,0,0,0.04) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.04) 1px, transparent 1px);
+            background-color: #f8fafc;
+        }
+        
+        .bg-notebook-header { background-color: #0f172a; }
+        .bg-notebook-sub { background-color: #1e293b; }
+        .pipette-lcd { font-family: 'Courier New', Courier, monospace; letter-spacing: 1px; font-weight: bold;}
+        
+        .svg-drop-shadow { filter: drop-shadow(0px 10px 8px rgba(0,0,0,0.25)); }
+        .svg-hover-glow:hover { filter: drop-shadow(0px 0px 15px rgba(59,130,246,0.6)); cursor: pointer; transform: translateY(-3px); transition: all 0.2s;}
+        
+        /* Guías Visuales Animadas (Pulse) */
+        @keyframes guide-pulse {
+            0% { filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0.7)); }
+            50% { filter: drop-shadow(0 0 20px rgba(59, 130, 246, 1)); transform: scale(1.02); }
+            100% { filter: drop-shadow(0 0 0 rgba(59, 130, 246, 0.7)); }
+        }
+        .guide-target {
+            animation: guide-pulse 1.5s infinite ease-in-out;
+            border-radius: 8px;
+        }
+
+        /* Líquidos hirviendo */
+        @keyframes boil {
+            0% { transform: translateY(0) scale(1); opacity: 0.8; }
+            50% { transform: translateY(-15px) scale(1.2); opacity: 0.3; }
+            100% { transform: translateY(-30px) scale(1.5); opacity: 0; }
+        }
+        .bubble {
+            position: absolute; bottom: 10%; background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 50%; animation: boil 1.5s infinite ease-in;
+        }
+        
+        .liquid-transition { transition: all 1s ease-in-out; }
+        .dna-band { transition: top 0.1s linear, opacity 0.3s ease; }
+        
+        /* Texturas de Cristal */
+        .glass-effect {
+            background: linear-gradient(135deg, rgba(255,255,255,0.6) 0%, rgba(255,255,255,0.1) 100%);
+            box-shadow: inset 2px 2px 5px rgba(255,255,255,0.8), inset -2px -2px 5px rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.7);
+        }
+
+        @keyframes slideDownTip {
+            0% { transform: translateY(-10px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .animate-tip { animation: slideDownTip 0.2s ease-out forwards; }
+
+        /* Dr. Metric HUD posicionado a la izquierda, libre de interrupciones */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .anim-float { animation: float 3s ease-in-out infinite; }
+
+        .dr-metric-hud {
+            position: absolute;
+            bottom: 260px;
+            left: 40px;
+            z-index: 100;
+            display: flex;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+        .dr-metric-avatar {
+            width: 80px;
+            height: 80px;
+            background-color: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 10px;
+            z-index: 10;
+        }
+        .dr-metric-bubble {
+            background-color: #fff;
+            padding: 15px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            max-width: 280px;
+            position: relative;
+            font-size: 13px;
+            color: #333;
+            border: 2px solid #38bdf8;
+            transition: border-color 0.3s ease;
+        }
+        .dr-metric-bubble::after {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: -10px;
+            border-width: 10px 10px 10px 0;
+            border-style: solid;
+            border-color: transparent #fff transparent transparent;
+            display: block;
+            width: 0;
+            z-index: 1;
+        }
+        .dr-metric-bubble::before {
+            content: '';
+            position: absolute;
+            top: 23px;
+            left: -13px;
+            border-width: 12px 12px 12px 0;
+            border-style: solid;
+            border-color: transparent inherit transparent transparent;
+            display: block;
+            width: 0;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 overflow-hidden selection:bg-blue-300">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- MOTOR DE SONIDO (Web Audio API) ---
+        const AudioEngine = {
+            ctx: null,
+            runOsc: null,
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            playTone(freq, type, duration, vol=0.1) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            playClick() { this.init(); this.playTone(1200, 'square', 0.05, 0.02); },
+            playGlass() { 
+                this.init(); 
+                this.playTone(2000, 'sine', 0.1, 0.05); 
+                setTimeout(() => this.playTone(2800, 'sine', 0.15, 0.02), 40); 
+            },
+            playPlastic() { this.init(); this.playTone(400, 'triangle', 0.1, 0.05); },
+            playPour() {
+                this.init();
+                const bufferSize = this.ctx.sampleRate * 0.8; 
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
+                filter.frequency.linearRampToValueAtTime(200, this.ctx.currentTime + 0.8);
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.8);
+                noise.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                noise.start();
+            },
+            playMicrowave() {
+                this.init();
+                this.playTone(50, 'sawtooth', 2.5, 0.1); 
+                this.playTone(1200, 'sine', 2.5, 0.01);  
+            },
+            playBeep() {
+                this.init();
+                this.playTone(1500, 'sine', 0.15, 0.1);
+                setTimeout(() => this.playTone(1500, 'sine', 0.15, 0.1), 300);
+            },
+            playSuccess() {
+                this.init();
+                this.playTone(523.25, 'sine', 0.1, 0.05); 
+                setTimeout(() => this.playTone(659.25, 'sine', 0.1, 0.05), 100); 
+                setTimeout(() => this.playTone(783.99, 'sine', 0.3, 0.05), 200); 
+            },
+            playError() {
+                this.init();
+                this.playTone(150, 'sawtooth', 0.3, 0.05);
+                setTimeout(() => this.playTone(140, 'sawtooth', 0.4, 0.05), 150);
+            },
+            startRun() {
+                this.init();
+                if(this.runOsc) return;
+                this.runOsc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                this.runOsc.type = 'triangle';
+                this.runOsc.frequency.setValueAtTime(60, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                this.runOsc.connect(gain);
+                gain.connect(this.ctx.destination);
+                this.runOsc.start();
+            },
+            stopRun() {
+                if(this.runOsc) { this.runOsc.stop(); this.runOsc = null; }
+            }
+        };
+
+        const STEPS = { MAKE_STOCK: 1, DILUTE: 2, PREP_AGAROSE: 3, HEAT: 4, CAST: 5, CHAMBER: 6, LOAD: 7, RUN: 8, UV: 9 };
+
+        const PROTOCOL_DATA = {
+            [STEPS.MAKE_STOCK]: {
+                title: "1. Preparación de TBE 10X",
+                desc: "Pesa y disuelve los reactivos sólidos en agua destilada para hacer el concentrado.",
+                tasks: [{id: 'tris', t: 'Pesar Tris-Base'}, {id: 'boric', t: 'Pesar Ác. Bórico'}, {id: 'edta', t: 'Pesar EDTA'}, {id: 'water1', t: 'Aforar con dH2O'}]
+            },
+            [STEPS.DILUTE]: {
+                title: "2. Dilución TBE 1X",
+                desc: "Nunca usamos el buffer 10X. Prepáralo a 1X diluyéndolo en agua.",
+                tasks: [{id: 'tbe10x', t: 'Tomar 100mL de TBE 10X'}, {id: 'water2', t: 'Aforar a 1L con dH2O'}]
+            },
+            [STEPS.PREP_AGAROSE]: {
+                title: "3. Mezcla del Gel",
+                desc: "Prepara el gel al 1%.",
+                tasks: [{id: 'agarose', t: 'Pesar 1g de Agarosa'}, {id: 'tbe1x', t: 'Añadir 100mL de TBE 1X'}]
+            },
+            [STEPS.HEAT]: {
+                title: "4. Fusión de Agarosa",
+                desc: "Calienta la mezcla en el microondas hasta que sea transparente.",
+                tasks: [{id: 'microwave', t: 'Fundir en microondas (1:30 min)'}]
+            },
+            [STEPS.CAST]: {
+                title: "5. Moldeado (Casting)",
+                desc: "Vierte el gel y pon el peine para crear los pocillos.",
+                tasks: [{id: 'pour', t: 'Verter en bandeja'}, {id: 'comb', t: 'Colocar peine'}, {id: 'solidify', t: 'Esperar a que solidifique'}]
+            },
+            [STEPS.CHAMBER]: {
+                title: "6. Cámara de Electroforesis",
+                desc: "Mueve el gel a la cámara y sumérgelo en buffer.",
+                tasks: [{id: 'move_gel', t: 'Montar gel en cámara'}, {id: 'add_buffer', t: 'Añadir Buffer TBE 1X'}]
+            },
+            [STEPS.LOAD]: {
+                title: "7. Tinte y Carga",
+                desc: "Usa la P20. El ADN es invisible; debes teñirlo primero mezclándolo con Loading Dye.",
+                tasks: [{id: 'dye', t: 'Mezclar Muestra con Loading Dye'}, {id: 'load_ladder', t: 'Cargar Ladder (Pocillo 1)'}, {id: 'load_samples', t: 'Cargar Muestras (Pocillo 2,3,4)'}]
+            },
+            [STEPS.RUN]: {
+                title: "8. Corrida",
+                desc: "Aplica corriente para separar los fragmentos.",
+                tasks: [{id: 'lid', t: 'Cerrar tapa'}, {id: 'power', t: 'Encender fuente (100V)'}]
+            },
+            [STEPS.UV]: {
+                title: "9. Visualización UV",
+                desc: "Observa los resultados en el Transiluminador.",
+                tasks: [{id: 'move_uv', t: 'Mover gel a Transiluminador'}, {id: 'turn_uv', t: 'Encender Luz UV'}]
+            }
+        };
+
+        // --- COMPONENTE AVATAR DR. METRIC ---
+        const SVGRobotFriendly = ({ emotion }) => {
+            let color = "#38bdf8"; 
+            let mouth = "M 40 65 Q 50 75 60 65"; 
+            let eyeM = "circle";
+
+            if (emotion === 'success') {
+                color = "#34d399"; 
+                mouth = "M 35 60 Q 50 80 65 60"; 
+                eyeM = "happy";
+            } else if (emotion === 'warning') {
+                color = "#fbbf24"; 
+                mouth = "M 45 70 Q 50 68 55 70"; 
+                eyeM = "worried"; 
+            } else if (emotion === 'thinking') {
+                color = "#a78bfa"; 
+                mouth = "M 40 70 L 60 70"; 
+                eyeM = "circle";
+            }
+
+            return (
+                <svg viewBox="0 0 100 100" className={`w-full h-full ${emotion === 'thinking' ? 'animate-pulse' : 'anim-float'}`}>
+                    <defs>
+                        <linearGradient id="screenGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#1e293b" />
+                            <stop offset="100%" stopColor="#0f172a" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M 50 25 L 50 10" stroke={color} strokeWidth="3" strokeLinecap="round" />
+                    <circle cx="50" cy="8" r="5" fill={emotion === 'warning' ? '#f59e0b' : color} className="animate-pulse" />
+                    <rect x="15" y="25" width="70" height="60" rx="15" fill="#0f172a" stroke={color} strokeWidth="4" />
+                    <rect x="25" y="35" width="50" height="40" rx="8" fill="url(#screenGrad)" stroke="#334155" strokeWidth="2" />
+                    
+                    {eyeM === 'happy' ? (
+                        <g fill="none" stroke={color} strokeWidth="4" strokeLinecap="round">
+                            <path d="M 32 48 Q 37 40 42 48" />
+                            <path d="M 58 48 Q 63 40 68 48" />
+                        </g>
+                    ) : eyeM === 'worried' ? (
+                        <g fill="none" stroke={color} strokeWidth="4" strokeLinecap="round">
+                            <path d="M 32 46 Q 37 42 42 45" />
+                            <path d="M 58 45 Q 63 42 68 46" />
+                        </g>
+                    ) : (
+                        <g fill={color}>
+                            <circle cx="37" cy="48" r="5" className={emotion === 'thinking' ? 'animate-ping' : ''} />
+                            <circle cx="63" cy="48" r="5" className={emotion === 'thinking' ? 'animate-ping' : ''} />
+                        </g>
+                    )}
+                    <path d={mouth} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" className="transition-all duration-300" />
+                </svg>
+            );
+        };
+
+        function ElectrophoresisSim() {
+            // --- INICIALIZACIÓN DE AUDIO ---
+            useEffect(() => {
+                const initAudio = () => AudioEngine.init();
+                window.addEventListener('click', initAudio, {once:true});
+                return () => window.removeEventListener('click', initAudio);
+            }, []);
+
+            // --- ESTADOS GLOBALES ---
+            const [showCredits, setShowCredits] = useState(false);
+            const [currentStep, setCurrentStep] = useState(STEPS.MAKE_STOCK);
+            const [completedTasks, setCompletedTasks] = useState([]);
+            
+            // --- DR METRIC Y PUNTUACION ---
+            const [metricMessage, setMetricMessage] = useState('¡Hola! Soy Dr. Metric. Te guiaré en tu práctica de Electroforesis.');
+            const [doctorEmotion, setDoctorEmotion] = useState('normal');
+            const [score, setScore] = useState(100);
+            const [penalties, setPenalties] = useState([]);
+            const metricTimeoutRef = useRef(null);
+
+            // --- ESTADOS DE INVENTARIO Y OBJETOS ---
+            const [activeTool, setActiveTool] = useState(null); 
+            const [scaleValue, setScaleValue] = useState("0.00");
+            
+            const [beakerState, setBeakerState] = useState([]); 
+            const [flaskState, setFlaskState] = useState([]); 
+            
+            const [isMicrowaving, setIsMicrowaving] = useState(false);
+            const [trayState, setTrayState] = useState('empty'); 
+            const [chamberState, setChamberState] = useState('empty'); 
+            const [runProgress, setRunProgress] = useState(0);
+            const [uvOn, setUvOn] = useState(false);
+
+            // --- ESTADOS PIPETA Y PUNTAS ---
+            const [pipetteVol, setPipetteVol] = useState(10.0);
+            const [showVolModal, setShowVolModal] = useState(false);
+            const [tempVol, setTempVol] = useState(10.0);
+            const [hasTip, setHasTip] = useState(false);
+            const [isTipBoxOpen, setIsTipBoxOpen] = useState(false); 
+            const [isTipDirty, setIsTipDirty] = useState(false);
+            const [tipUsed, setTipUsed] = useState(false); // Para rastrear reutilización
+            const [samplesDyed, setSamplesDyed] = useState(false);
+            const [liquidInTip, setLiquidInTip] = useState({ vol: 0, type: null }); 
+            const [wells, setWells] = useState([null, null, null, null]);
+
+            const showMetricMessage = (message, emotion = 'normal', duration = 5000) => {
+                if (metricTimeoutRef.current) clearTimeout(metricTimeoutRef.current);
+                setMetricMessage(message);
+                setDoctorEmotion(emotion);
+                if (duration > 0) {
+                    metricTimeoutRef.current = setTimeout(() => {
+                        setMetricMessage("¡Sigue así! Estoy observando tu técnica.");
+                        setDoctorEmotion('normal');
+                    }, duration);
+                }
+            };
+
+            const addPenalty = (points, reason, advice) => {
+                AudioEngine.playError();
+                setScore(prev => Math.max(0, prev - points));
+                setPenalties(prev => [...prev, { points, reason, advice }]);
+                showMetricMessage(`¡Atención! ${reason}. ${advice}`, 'warning', 8000);
+            };
+
+            const markTaskDone = (taskId) => {
+                if (!completedTasks.includes(taskId)) {
+                    setCompletedTasks(prev => {
+                        const newTasks = [...prev, taskId];
+                        if (newTasks.length === PROTOCOL_DATA[currentStep].tasks.length) {
+                            AudioEngine.playSuccess();
+                            if (currentStep === STEPS.UV) {
+                                showMetricMessage("¡Felicidades! Has completado todas las fases. Revisemos tu evaluación final.", "success", 0);
+                            } else {
+                                showMetricMessage("¡Fase completada perfectamente!", "success", 4000);
+                            }
+                        } else {
+                            AudioEngine.playClick();
+                        }
+                        return newTasks;
+                    });
+                }
+            };
+
+            // Evaluar avance de tareas por Step
+            useEffect(() => {
+                if (currentStep === STEPS.MAKE_STOCK) {
+                    if (beakerState.includes('tris')) markTaskDone('tris');
+                    if (beakerState.includes('boric')) markTaskDone('boric');
+                    if (beakerState.includes('edta')) markTaskDone('edta');
+                    if (beakerState.includes('water1')) markTaskDone('water1');
+                } else if (currentStep === STEPS.DILUTE) {
+                    if (flaskState.includes('tbe10x')) markTaskDone('tbe10x');
+                    if (flaskState.includes('water2')) markTaskDone('water2');
+                } else if (currentStep === STEPS.PREP_AGAROSE) {
+                    if (flaskState.includes('agarose')) markTaskDone('agarose');
+                    if (flaskState.includes('tbe1x')) markTaskDone('tbe1x');
+                } else if (currentStep === STEPS.HEAT) {
+                    if (flaskState.includes('melted')) markTaskDone('microwave');
+                } else if (currentStep === STEPS.CAST) {
+                    if (trayState === 'poured' || trayState === 'combed' || trayState === 'solid') markTaskDone('pour');
+                    if (trayState === 'combed' || trayState === 'solid') markTaskDone('comb');
+                    if (trayState === 'solid') markTaskDone('solidify');
+                } else if (currentStep === STEPS.CHAMBER) {
+                    if (chamberState !== 'empty') markTaskDone('move_gel');
+                    if (chamberState === 'has_buffer' || chamberState === 'lid_on') markTaskDone('add_buffer');
+                } else if (currentStep === STEPS.LOAD) {
+                    if (samplesDyed) markTaskDone('dye');
+                    if (wells[0] === 'ladder') markTaskDone('load_ladder');
+                    if (wells[1] && wells[2] && wells[3]) markTaskDone('load_samples');
+                } else if (currentStep === STEPS.RUN) {
+                    if (chamberState === 'lid_on' || chamberState === 'running' || chamberState === 'done') markTaskDone('lid');
+                    if (chamberState === 'running' || chamberState === 'done') markTaskDone('power');
+                } else if (currentStep === STEPS.UV) {
+                    if (trayState === 'in_uv') markTaskDone('move_uv');
+                    if (uvOn) markTaskDone('turn_uv');
+                }
+            }, [beakerState, flaskState, trayState, chamberState, wells, samplesDyed, uvOn, currentStep, completedTasks]);
+
+            // Animación Corrida Electroforesis
+            useEffect(() => {
+                let interval;
+                if (chamberState === 'running') {
+                    interval = setInterval(() => {
+                        setRunProgress(prev => {
+                            if (prev >= 100) {
+                                clearInterval(interval);
+                                setChamberState('done');
+                                AudioEngine.stopRun();
+                                AudioEngine.playBeep();
+                                showMetricMessage("✅ Corrida finalizada. Pasa el gel al transiluminador UV.", "success", 6000);
+                                return 100;
+                            }
+                            return prev + 0.8; 
+                        });
+                    }, 50);
+                }
+                return () => clearInterval(interval);
+            }, [chamberState]);
+
+            // --- SISTEMA DE GUÍAS INTELIGENTES ---
+            const getNextTarget = () => {
+                if (currentStep === STEPS.MAKE_STOCK) {
+                    if (!completedTasks.includes('tris')) return activeTool === 'tris' ? 'beaker' : 'tris';
+                    if (!completedTasks.includes('boric')) return activeTool === 'boric' ? 'beaker' : 'boric';
+                    if (!completedTasks.includes('edta')) return activeTool === 'edta' ? 'beaker' : 'edta';
+                    if (!completedTasks.includes('water1')) return activeTool === 'water' ? 'beaker' : 'water';
+                }
+                if (currentStep === STEPS.DILUTE) {
+                    if (!completedTasks.includes('tbe10x')) return activeTool === 'beaker' ? 'flask' : 'beaker';
+                    if (!completedTasks.includes('water2')) return activeTool === 'water' ? 'flask' : 'water';
+                }
+                if (currentStep === STEPS.PREP_AGAROSE) {
+                    if (!completedTasks.includes('agarose')) {
+                        if (scaleValue === "0.00" && activeTool !== 'weighed_agarose') return activeTool === 'agarose' ? 'scale' : 'agarose';
+                        if (scaleValue === "1.00") return 'scale'; 
+                        if (activeTool === 'weighed_agarose') return 'flask';
+                    }
+                    if (!completedTasks.includes('tbe1x')) return activeTool === 'tbe1x' ? 'flask' : 'tbe1x';
+                }
+                if (currentStep === STEPS.HEAT) {
+                    if (!completedTasks.includes('microwave')) return activeTool === 'flask' ? 'microwave' : 'flask';
+                }
+                if (currentStep === STEPS.CAST) {
+                    if (!completedTasks.includes('pour')) return activeTool === 'flask' ? 'tray' : 'flask';
+                    if (!completedTasks.includes('comb')) return activeTool === 'comb' ? 'tray' : 'comb';
+                    if (!completedTasks.includes('solidify')) return null; 
+                }
+                if (currentStep === STEPS.CHAMBER) {
+                    if (!completedTasks.includes('move_gel')) return activeTool === 'gel_solid' ? 'chamber' : 'tray'; 
+                    if (!completedTasks.includes('add_buffer')) return activeTool === 'tbe1x' ? 'chamber' : 'tbe1x';
+                }
+                if (currentStep === STEPS.LOAD) {
+                    if (activeTool !== 'P20') return 'P20';
+                    if (!hasTip) return 'tipbox';
+                    if (isTipDirty) return 'trash';
+                    if (!completedTasks.includes('dye')) {
+                        if (liquidInTip.vol === 0) return 'tube_dye';
+                        if (liquidInTip.type === 'dye') return 'tube_sample';
+                    }
+                    if (!completedTasks.includes('load_ladder')) {
+                        if (liquidInTip.vol === 0) return 'tube_ladder';
+                        if (liquidInTip.type === 'ladder') return 'chamber';
+                    }
+                    if (!completedTasks.includes('load_samples')) {
+                        if (liquidInTip.vol === 0) return 'tube_sample';
+                        return 'chamber';
+                    }
+                }
+                if (currentStep === STEPS.RUN) {
+                    if (!completedTasks.includes('lid')) return activeTool === 'lid' ? 'chamber' : 'lid';
+                    if (!completedTasks.includes('power')) return 'power';
+                }
+                if (currentStep === STEPS.UV) {
+                    if (!completedTasks.includes('move_uv')) return activeTool === 'gel_run' ? 'uvbox' : 'chamber';
+                    if (!completedTasks.includes('turn_uv')) return 'uvbox';
+                }
+                return null;
+            };
+            const nextTarget = getNextTarget();
+
+            // --- LÓGICA DE INTERACCIÓN ---
+            const handleToolSelect = (tool) => {
+                AudioEngine.init();
+                if (activeTool === tool) {
+                    setActiveTool(null); 
+                    AudioEngine.playClick();
+                } else {
+                    setActiveTool(tool);
+                    if (tool === 'flask' || tool === 'beaker' || tool === 'tbe1x' || tool === 'gel_solid' || tool === 'gel_run') AudioEngine.playGlass();
+                    else AudioEngine.playPlastic();
+                }
+            };
+
+            const interactWithTarget = (target) => {
+                AudioEngine.init();
+                
+                if (target === 'scale') {
+                    if (currentStep === STEPS.PREP_AGAROSE) {
+                        if (activeTool === 'agarose') {
+                            setScaleValue("1.00");
+                            setActiveTool(null);
+                            AudioEngine.playPour();
+                            showMetricMessage("Pesaste 1.00g de Agarosa correctamente.", "success");
+                        } else if (scaleValue === "1.00" && activeTool === null) {
+                            setScaleValue("0.00");
+                            setActiveTool('weighed_agarose');
+                            AudioEngine.playPlastic();
+                        } else {
+                            addPenalty(2, "Pesaje incorrecto", "Usa la agarosa de la repisa para pesar.");
+                        }
+                    } else {
+                        addPenalty(2, "Uso indebido de balanza", "No necesitas la balanza en este paso.");
+                    }
+                }
+                
+                else if (target === 'beaker') {
+                    if (currentStep === STEPS.MAKE_STOCK) {
+                        if (['tris', 'boric', 'edta', 'water'].includes(activeTool)) {
+                            const map = { 'tris':'Tris', 'boric':'Ác. Bórico', 'edta':'EDTA', 'water':'Agua' };
+                            const idMap = { 'water': 'water1' };
+                            const idToSave = idMap[activeTool] || activeTool;
+                            
+                            if (activeTool === 'water' && beakerState.length < 3) {
+                                addPenalty(5, "Orden incorrecto", "Añade primero los sólidos y luego afora con agua.");
+                                return;
+                            }
+                            
+                            if (!beakerState.includes(idToSave)) {
+                                setBeakerState([...beakerState, idToSave]);
+                                setActiveTool(null);
+                                AudioEngine.playPour();
+                                showMetricMessage(`Añadido ${map[activeTool]} al vaso.`, "normal", 3000);
+                            }
+                        } else if (activeTool === null) {
+                            handleToolSelect('beaker');
+                        }
+                    } else if (activeTool === null && beakerState.includes('water1')) {
+                        handleToolSelect('beaker'); 
+                    }
+                }
+                
+                else if (target === 'flask') {
+                    if (currentStep === STEPS.DILUTE) {
+                        if (activeTool === 'beaker') {
+                            setFlaskState([...flaskState, 'tbe10x']);
+                            setActiveTool(null);
+                            AudioEngine.playPour();
+                            showMetricMessage("TBE 10X transferido al matraz.", "normal", 3000);
+                        } else if (activeTool === 'water' && flaskState.includes('tbe10x')) {
+                            setFlaskState([...flaskState, 'water2']);
+                            setActiveTool(null);
+                            AudioEngine.playPour();
+                            showMetricMessage("Buffer diluido a 1X.", "success", 3000);
+                        }
+                    } 
+                    else if (currentStep === STEPS.PREP_AGAROSE) {
+                        if (activeTool === 'weighed_agarose') {
+                            setFlaskState([...flaskState, 'agarose']);
+                            setActiveTool(null);
+                            AudioEngine.playPour();
+                            showMetricMessage("Agarosa depositada en matraz.", "normal", 3000);
+                        } else if (activeTool === 'tbe1x') {
+                            if (!flaskState.includes('agarose')) {
+                                addPenalty(5, "Falta agarosa", "Añade la agarosa pesada antes del buffer.");
+                                return;
+                            }
+                            setFlaskState([...flaskState, 'tbe1x']);
+                            setActiveTool(null);
+                            AudioEngine.playPour();
+                            showMetricMessage("Buffer añadido a la agarosa.", "success", 3000);
+                        }
+                    }
+                    else if (activeTool === null || activeTool === 'flask') {
+                        handleToolSelect('flask');
+                    }
+                }
+                
+                else if (target === 'microwave') {
+                    if (currentStep === STEPS.HEAT) {
+                        if (activeTool === 'flask') {
+                            setIsMicrowaving(true);
+                            setActiveTool(null);
+                            AudioEngine.playMicrowave();
+                            setTimeout(() => {
+                                setIsMicrowaving(false);
+                                setFlaskState([...flaskState, 'melted']);
+                                AudioEngine.playBeep();
+                                showMetricMessage("🔥 Agarosa fundida y cristalina.", "success", 4000);
+                            }, 2500);
+                        } else {
+                            addPenalty(5, "Uso incorrecto microondas", "Solo introduce el matraz con mezcla al microondas.");
+                        }
+                    }
+                }
+                
+                else if (target === 'tray') {
+                    if (currentStep === STEPS.CAST) {
+                        if (activeTool === 'flask' && flaskState.includes('melted')) {
+                            setTrayState('poured');
+                            setFlaskState([]); 
+                            setActiveTool(null);
+                            AudioEngine.playPour();
+                            showMetricMessage("Agarosa vertida. Ahora coloca el peine.", "normal", 3000);
+                        } else if (activeTool === 'comb' && trayState === 'poured') {
+                            setTrayState('combed');
+                            setActiveTool(null);
+                            AudioEngine.playPlastic();
+                            showMetricMessage("⏳ Solidificando... Espera 3s.", "thinking", 3000);
+                            setTimeout(() => {
+                                setTrayState('solid');
+                                AudioEngine.playSuccess();
+                                showMetricMessage("Gel solidificado. Listo para montar en cámara.", "success");
+                            }, 3000);
+                        }
+                    } else if (currentStep === STEPS.CHAMBER && trayState === 'solid' && !activeTool) {
+                        handleToolSelect('gel_solid');
+                    }
+                }
+                
+                else if (target === 'chamber') {
+                    if (currentStep === STEPS.CHAMBER) {
+                        if (activeTool === 'gel_solid') {
+                            setChamberState('has_gel');
+                            setTrayState('empty');
+                            setActiveTool(null);
+                            AudioEngine.playGlass();
+                            showMetricMessage("Gel posicionado en los electrodos.", "success", 3000);
+                        } else if (activeTool === 'tbe1x') {
+                            if (chamberState !== 'has_gel') {
+                                addPenalty(5, "Buffer sin gel", "Coloca el gel en la cámara antes de añadir el buffer.");
+                                return;
+                            }
+                            setChamberState('has_buffer');
+                            setActiveTool(null);
+                            AudioEngine.playPour();
+                            showMetricMessage("Cámara llena de buffer conductor.", "success", 3000);
+                        }
+                    } else if (currentStep === STEPS.LOAD) {
+                        // Interactions handled by Wells
+                    } else if (currentStep === STEPS.RUN) {
+                        if (activeTool === 'lid') {
+                            setChamberState('lid_on');
+                            setActiveTool(null);
+                            AudioEngine.playPlastic();
+                            showMetricMessage("Cables de seguridad conectados.", "success", 3000);
+                        }
+                    } else if (currentStep === STEPS.UV && (chamberState === 'done' || chamberState === 'lid_on')) {
+                        if (!activeTool) {
+                            handleToolSelect('gel_run');
+                            showMetricMessage("Tomaste el gel corrido. Llévalo al UV.", "normal", 3000);
+                        }
+                    }
+                }
+                
+                else if (target === 'power') {
+                    if (currentStep === STEPS.RUN) {
+                        if (chamberState === 'lid_on') {
+                            setChamberState('running');
+                            AudioEngine.startRun();
+                            showMetricMessage("⚡ 100V. ADN migrando hacia el polo Positivo (+).", "normal", 5000);
+                        } else {
+                            addPenalty(15, "Riesgo de electrocución", "¡Peligro! Siempre debes cerrar la cámara con la tapa antes de encender la fuente.");
+                        }
+                    }
+                }
+                
+                else if (target === 'uvbox') {
+                    if (currentStep === STEPS.UV) {
+                        if (activeTool === 'gel_run') {
+                            setTrayState('in_uv');
+                            setChamberState('empty');
+                            setActiveTool(null);
+                            AudioEngine.playGlass();
+                            showMetricMessage("Gel en transiluminador. Enciende la luz.", "normal", 3000);
+                        } else if (trayState === 'in_uv' && !uvOn) {
+                            setUvOn(true);
+                            AudioEngine.playClick();
+                            AudioEngine.playSuccess();
+                            showMetricMessage("¡Resultados revelados! Compara las bandas con el Ladder.", "success", 5000);
+                        }
+                    }
+                }
+            };
+
+            // LÓGICA DE PIPETA Y TUBOS
+            const checkTipBoxOpen = () => {
+                if (isTipBoxOpen) {
+                    addPenalty(3, "Caja de puntas abierta", "Cierra la caja inmediatamente después de usarla para evitar contaminación.");
+                    setIsTipBoxOpen(false);
+                }
+            };
+
+            const handleTipBox = () => {
+                AudioEngine.init();
+                if (!isTipBoxOpen) {
+                    setIsTipBoxOpen(true);
+                    AudioEngine.playPlastic(); 
+                } else {
+                    if (activeTool === 'P20' && !hasTip) {
+                        setHasTip(true); 
+                        setIsTipDirty(false); 
+                        setTipUsed(false);
+                        AudioEngine.playClick(); 
+                        showMetricMessage("Punta P20 colocada.", "normal", 2000);
+                    } else if (activeTool !== 'P20') {
+                        addPenalty(5, "Herramienta incorrecta", "Necesitas la P20 para tomar estas puntas.");
+                    } else {
+                        setIsTipBoxOpen(false);
+                        AudioEngine.playPlastic();
+                    }
+                }
+            };
+            
+            const handleTrash = () => {
+                AudioEngine.init();
+                if (hasTip) { 
+                    setHasTip(false); 
+                    setIsTipDirty(false); 
+                    setTipUsed(false);
+                    setLiquidInTip({vol:0, type:null}); 
+                    AudioEngine.playPlastic();
+                    showMetricMessage("Punta desechada en el RPBI."); 
+                }
+            };
+            
+            const handleTube = (type) => {
+                AudioEngine.init();
+                if (activeTool !== 'P20' || !hasTip) { 
+                    addPenalty(5, "Pipeteo incorrecto", "Necesitas la pipeta P20 con punta limpia."); 
+                    return; 
+                }
+                if (isTipDirty) { 
+                    addPenalty(5, "Punta sucia", "¡Contaminación! Desecha esta punta y toma una nueva."); 
+                    return; 
+                }
+                if (pipetteVol !== 10) { 
+                    addPenalty(2, "Volumen incorrecto", "Ajusta el volumen a 10 µL en el display de la pipeta."); 
+                    return; 
+                }
+                
+                checkTipBoxOpen();
+
+                if (type === 'dye') {
+                    if (liquidInTip.vol > 0) { addPenalty(5, "Pipeta llena", "La punta ya tiene líquido."); return; }
+                    if (tipUsed) { addPenalty(10, "Contaminación cruzada", "Usaste una punta vieja para tomar reactivo nuevo."); }
+                    
+                    setLiquidInTip({ vol: 10, type: 'dye' });
+                    setTipUsed(true);
+                    AudioEngine.playPour();
+                    showMetricMessage(`Aspirado: Loading Dye`);
+                } 
+                else if (type === 'sample') {
+                    if (liquidInTip.type === 'dye') {
+                        setSamplesDyed(true);
+                        setLiquidInTip({ vol: 0, type: null }); 
+                        setIsTipDirty(true);
+                        AudioEngine.playPour();
+                        showMetricMessage("Muestra teñida. Desecha la punta sucia.", "success", 4000);
+                    } 
+                    else if (liquidInTip.vol === 0) {
+                        if (tipUsed) { addPenalty(10, "Contaminación cruzada", "Tomaste muestra con una punta usada."); }
+                        
+                        const sType = samplesDyed ? 'sample_dyed' : 'sample_undyed';
+                        setLiquidInTip({ vol: 10, type: sType });
+                        setTipUsed(true);
+                        AudioEngine.playPour();
+                        if (!samplesDyed) {
+                            addPenalty(10, "Muestra sin teñir", "Aspiraste ADN sin Loading Dye. Flotará y no se verá en el UV.");
+                        } else {
+                            showMetricMessage(`Muestra Teñida lista para cargar.`);
+                        }
+                    } else {
+                        addPenalty(5, "Mezcla inválida", "No puedes mezclar de esta forma.");
+                    }
+                } 
+                else if (type === 'ladder') {
+                    if (liquidInTip.vol > 0) { addPenalty(5, "Pipeta llena", "La punta ya tiene líquido."); return; }
+                    if (tipUsed) { addPenalty(10, "Contaminación cruzada", "Tomaste el ladder con una punta usada."); }
+                    
+                    setLiquidInTip({ vol: 10, type: 'ladder' });
+                    setTipUsed(true);
+                    AudioEngine.playPour();
+                    showMetricMessage(`Aspirado: Ladder`);
+                }
+            };
+            
+            const handleWell = (idx) => {
+                AudioEngine.init();
+                if (activeTool !== 'P20') return;
+                
+                checkTipBoxOpen();
+
+                if (liquidInTip.vol === 0) { 
+                    addPenalty(2, "Pozo vacío", "La pipeta no tiene muestra para cargar."); 
+                    return; 
+                }
+                if (wells[idx] !== null) { 
+                    addPenalty(5, "Pozo ocupado", "Ese pocillo ya tiene muestra, la vas a contaminar."); 
+                    return; 
+                }
+                if (idx === 0 && liquidInTip.type !== 'ladder') { 
+                    addPenalty(5, "Orden incorrecto", "El Pocillo 1 es para el Ladder (Marcador de peso)."); 
+                    return; 
+                }
+                if (idx > 0 && liquidInTip.type === 'ladder') { 
+                    addPenalty(5, "Orden incorrecto", "La Escalera va en el Pocillo 1."); 
+                    return; 
+                }
+                
+                const nw = [...wells]; nw[idx] = liquidInTip.type; setWells(nw);
+                setLiquidInTip({vol:0, type:null}); 
+                setIsTipDirty(true); 
+                AudioEngine.playClick();
+                showMetricMessage("Cargado correctamente en el pocillo.", "success", 3000);
+            };
+
+            // --- COMPONENTES VISUALES ---
+            const SVGTipBoxInteractive = ({ isOpen, onClick, isTarget }) => {
+                const boxColor = '#f1c40f'; 
+                return (
+                    <div className={`flex flex-col items-center cursor-pointer transition-all ${isTarget?'guide-target scale-105':''}`} onClick={onClick}>
+                        <div className="relative w-28 h-20 flex justify-center items-end">
+                            <svg width="100" height="80" viewBox="0 0 100 80" className="drop-shadow-lg">
+                                <path d="M10,40 L90,40 L85,80 L15,80 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="2" />
+                                {isOpen && (
+                                    <g opacity="0.8">
+                                        {[20, 35, 50, 65, 80].map(x => [45, 55, 65].map(y => <circle key={`${x}-${y}`} cx={x} cy={y} r="3" fill="#cbd5e1" />))}
+                                    </g>
+                                )}
+                                <g transform={isOpen ? "translate(0, -35) rotate(-15)" : "translate(0, 0)"} className="transition-transform duration-300 origin-bottom">
+                                    <path d="M10,40 L90,40 L85,10 L15,10 Z" fill={boxColor} fillOpacity="0.8" stroke="#ca8a04" strokeWidth="2" />
+                                    <rect x="40" y="5" width="20" height="5" fill="#f1f5f9" />
+                                    <text x="50" y="30" fill="#713f12" fontSize="12" fontWeight="bold" textAnchor="middle">P20</text>
+                                </g>
+                            </svg>
+                        </div>
+                        <span className="text-[10px] font-black mt-1 text-slate-800 bg-white px-3 py-0.5 rounded shadow border border-slate-300 text-center leading-tight">
+                            {isOpen ? "Caja Abierta" : "Caja P20"}
+                        </span>
+                    </div>
+                );
+            };
+
+            const SVGEppendorf = ({ label, color, type }) => (
+                <div className={`flex flex-col items-center cursor-pointer svg-hover-glow transition-all ${nextTarget===`tube_${type}`?'guide-target scale-110':''}`} onClick={() => handleTube(type)}>
+                    <svg width="25" height="50" viewBox="0 0 50 100" className="drop-shadow-md">
+                        <path d="M 0 15 Q 10 5 20 15 L 10 25 Z" fill="#cbd5e1" stroke="#475569" strokeWidth="2" />
+                        <path d="M 15 20 L 35 20 L 35 70 Q 35 90 25 90 Q 15 90 15 70 Z" fill="rgba(255,255,255,0.8)" stroke="#475569" strokeWidth="2" />
+                        <path d="M 16 60 L 34 60 L 34 70 Q 34 88 25 88 Q 16 88 16 70 Z" fill={color} className="transition-colors duration-500" />
+                    </svg>
+                    <span className="text-[9px] font-bold mt-1 text-slate-800 bg-white/90 px-1 rounded shadow-sm border border-slate-300 text-center leading-tight">{label}</span>
+                </div>
+            );
+
+            const SVGPipette = ({ isRack = false }) => {
+                const isActive = activeTool === 'P20';
+                return (
+                    <div className={`relative flex flex-col items-center transition-all ${isRack ? 'svg-hover-glow cursor-pointer' : ''} ${isRack && isActive ? 'opacity-30' : 'opacity-100'} ${isRack && nextTarget==='P20'?'guide-target':''}`} onClick={isRack ? () => handleToolSelect('P20') : null}>
+                        <svg width={isRack ? "25" : "30"} height={isRack ? "110" : "120"} viewBox="0 0 40 150" className={!isRack ? "svg-drop-shadow" : ""}>
+                            <rect x="15" y={!isRack && hasTip ? "10" : "0"} width="10" height="20" fill="#f8fafc" stroke="#475569" strokeWidth="1" className="transition-all" />
+                            <rect x="10" y="20" width="20" height="10" fill="#f1c40f" stroke="#ca8a04" strokeWidth="1" />
+                            <path d="M10,30 L30,30 L34,80 L6,80 Z" fill="#ffffff" stroke="#475569" strokeWidth="2" />
+                            {!isRack && (
+                                <g onClick={() => {setTempVol(pipetteVol); setShowVolModal(true); AudioEngine.playClick();}} className="cursor-pointer">
+                                    <rect x="12" y="45" width="16" height="20" fill="#1e293b" rx="2" />
+                                    <text x="20" y="58" fill="#10b981" fontSize="9" textAnchor="middle" className="pipette-lcd">{pipetteVol.toFixed(1)}</text>
+                                </g>
+                            )}
+                            <polygon points="12,80 28,80 22,120 18,120" fill="#f1f5f9" stroke="#475569" strokeWidth="2" />
+                            {(!isRack && hasTip) && (
+                                <g className="animate-tip">
+                                    <polygon points="17,120 23,120 21,150 19,150" fill="#fef9e7" stroke="#475569" strokeWidth="1" />
+                                    {liquidInTip.vol > 0 && <polygon points="18,125 22,125 20.5,145 19.5,145" fill={liquidInTip.type==='ladder'?'#9333ea':liquidInTip.type==='dye'?'#1e3a8a':liquidInTip.type==='sample_dyed'?'#3b82f6':'rgba(255,255,255,0.4)'} />}
+                                </g>
+                            )}
+                        </svg>
+                        {isRack && <span className="text-[10px] font-black mt-2 text-white bg-slate-800 px-2 py-0.5 rounded shadow">P20</span>}
+                        {!isRack && isTipDirty && <div className="mt-1 text-[8px] bg-red-100 text-red-700 px-1 rounded font-bold border border-red-300">SUCIA</div>}
+                    </div>
+                );
+            };
+
+            const SVGTrashBinRPBI = () => (
+                <div className={`relative w-24 h-24 flex-shrink-0 flex flex-col items-center justify-end pb-2 cursor-pointer transition-transform hover:-translate-y-2 active:scale-95 ${nextTarget==='trash'?'guide-target':''}`} onClick={handleTrash}>
+                    <span className="text-red-100 bg-red-800 px-2 py-0.5 rounded shadow-sm text-[10px] font-bold mb-1 border border-red-900">RPBI</span>
+                    <svg width="60" height="50" viewBox="0 0 60 50">
+                        <path d="M10,15 L50,15 L45,45 L15,45 Z" fill="#dc2626" stroke="#991b1b" strokeWidth="2" />
+                        <path d="M5,10 L55,10 L55,15 L5,15 Z" fill="#b91c1c" />
+                        <polygon points="30,22 22,38 38,38" fill="#facc15" />
+                        <path d="M30,26 L30,32 M30,35 L30,36" stroke="#000" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                </div>
+            );
+
+            const SVGTransilluminator = () => (
+                <div className={`flex flex-col items-center cursor-pointer transition-all ${nextTarget==='uvbox'?'guide-target scale-105':''}`} onClick={() => interactWithTarget('uvbox')}>
+                    <div className="w-[280px] h-[320px] bg-slate-900 border-[12px] border-slate-800 rounded-3xl shadow-2xl flex flex-col justify-between items-center overflow-hidden">
+                        <div className={`relative w-[220px] h-[230px] rounded-xl transition-all duration-1000 ${uvOn ? 'bg-slate-800 shadow-[0_0_40px_rgba(6,182,212,0.4)]' : 'bg-slate-700'} mt-5 p-3 border-2 border-white/10`}>
+                            {trayState === 'in_uv' && (
+                                <div className={`w-full h-full relative transition-opacity duration-1000 ${uvOn ? 'opacity-100' : 'opacity-0'}`}>
+                                    {/* LADDER */}
+                                    <div className="absolute left-[8%] top-0 h-full w-8">
+                                        {[{kb: 10, t: 10}, {kb: 8, t: 25}, {kb: 6, t: 40}, {kb: 5, t: 55}, {kb: 4, t: 70}, {kb: 3, t: 90}, {kb: 2, t: 120}, {kb: 1, t: 180}].map((b,i) => (
+                                            <div key={i} className="absolute w-10 h-[2.5px] bg-cyan-300 shadow-[0_0_10px_#22d3ee] rounded-full" style={{top: `${b.t}px`}}>
+                                                {b.kb === 3 && <span className="absolute left-12 top-[-3px] text-[9px] text-cyan-200 font-mono font-bold">3kb</span>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                    {/* MUESTRAS MULTIPLEX */}
+                                    {[1,2,3].map(w => wells[w] === 'sample_dyed' && (
+                                        <div key={w} className={`absolute top-0 h-full w-10`} style={{left: `${(w*25)+8}%`}}>
+                                            <div className="absolute w-10 h-[4px] bg-cyan-200 shadow-[0_0_12px_#67e8f9] rounded-full blur-[0.5px]" style={{top: '40px'}}></div>
+                                            <div className="absolute w-10 h-[3px] bg-cyan-300 shadow-[0_0_12px_#67e8f9] rounded-full blur-[0.5px]" style={{top: '75px'}}></div>
+                                            <div className="absolute w-10 h-[2px] bg-cyan-400 shadow-[0_0_8px_#67e8f9] rounded-full blur-[1px] opacity-80" style={{top: '115px'}}></div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                        <div className={`w-full h-12 bg-slate-800 border-t-4 border-slate-700 flex justify-center items-center cursor-auto ${nextTarget==='uvbtn'?'guide-target':''}`} onClick={(e) => {e.stopPropagation(); interactWithTarget('uvbox');}}>
+                            <button className={`px-5 py-1.5 rounded-full font-extrabold text-[11px] shadow-inner transition-all ${uvOn ? 'bg-cyan-500 text-slate-900 shadow-[0_0_10px_#06b6d4]' : 'bg-slate-600 text-slate-300'}`}>
+                                {uvOn ? '🟢 LUZ UV ENCENDIDA' : '🔴 ENCENDER LUZ UV'}
+                            </button>
+                        </div>
+                    </div>
+                    <span className="text-xs font-black mt-3 bg-white text-slate-800 px-4 py-1 rounded shadow-lg border border-slate-300">Transiluminador UV</span>
+                </div>
+            );
+
+            // --- DR METRIC HUD ---
+            const DrMetricHUD = () => (
+                <div className="dr-metric-hud animate-fade-in-up">
+                    <div className="dr-metric-avatar">
+                        <svg viewBox="0 0 100 100" className={`w-full h-full ${doctorEmotion === 'thinking' ? 'animate-pulse' : 'anim-float'}`}>
+                            <defs>
+                                <linearGradient id="screenGradDr" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#1e293b" />
+                                    <stop offset="100%" stopColor="#0f172a" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M 50 25 L 50 10" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" />
+                            <circle cx="50" cy="8" r="5" fill={doctorEmotion === 'warning' ? '#f59e0b' : '#38bdf8'} className="animate-pulse" />
+                            <rect x="15" y="25" width="70" height="60" rx="15" fill="#0f172a" stroke="#38bdf8" strokeWidth="4" />
+                            <rect x="25" y="35" width="50" height="40" rx="8" fill="url(#screenGradDr)" stroke="#334155" strokeWidth="2" />
+                            
+                            {doctorEmotion === 'success' ? (
+                                <g fill="none" stroke="#34d399" strokeWidth="4" strokeLinecap="round">
+                                    <path d="M 32 48 Q 37 40 42 48" />
+                                    <path d="M 58 48 Q 63 40 68 48" />
+                                    <path d="M 35 60 Q 50 80 65 60" />
+                                </g>
+                            ) : doctorEmotion === 'warning' ? (
+                                <g fill="none" stroke="#fbbf24" strokeWidth="4" strokeLinecap="round">
+                                    <path d="M 32 46 Q 37 42 42 45" />
+                                    <path d="M 58 45 Q 63 42 68 46" />
+                                    <path d="M 45 70 Q 50 68 55 70" />
+                                </g>
+                            ) : (
+                                <g fill="#38bdf8">
+                                    <circle cx="37" cy="48" r="5" className={doctorEmotion === 'thinking' ? 'animate-ping' : ''} />
+                                    <circle cx="63" cy="48" r="5" className={doctorEmotion === 'thinking' ? 'animate-ping' : ''} />
+                                    <path d="M 40 65 Q 50 75 60 65" fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" />
+                                </g>
+                            )}
+                        </svg>
+                    </div>
+                    <div className="dr-metric-bubble" style={{ borderColor: doctorEmotion === 'success' ? '#10b981' : doctorEmotion === 'warning' ? '#f59e0b' : '#38bdf8' }}>
+                        <p className="font-bold mb-1" style={{ color: doctorEmotion === 'success' ? '#10b981' : doctorEmotion === 'warning' ? '#f59e0b' : '#38bdf8' }}>Dr. Metric dice:</p>
+                        <p>{metricMessage}</p>
+                    </div>
+                </div>
+            );
+
+            // --- RENDERIZADO PRINCIPAL ---
+            return (
+                <div className="flex h-screen w-full bg-slate-900 overflow-hidden" onClick={() => AudioEngine.init()}>
+                    
+                    {/* Componente del Asistente Virtual (Flotando abajo a la izquierda) */}
+                    <DrMetricHUD />
+
+                    {/* -- ÁREA DE SIMULACIÓN (IZQUIERDA) -- */}
+                    <div className="flex-grow relative bg-slate-50 lab-bg-grid flex flex-col shadow-[inset_-10px_0_20px_rgba(0,0,0,0.05)]">
+                        
+                        {/* Botón Info de Tesis (Prominente) */}
+                        <div className="absolute top-6 left-6 z-50 flex gap-4 pointer-events-auto">
+                            <button onClick={() => {setShowCredits(true); AudioEngine.playClick();}} className="bg-white/80 text-[#005682] border border-[#005682]/30 px-4 py-2 rounded-full shadow-lg hover:bg-white font-bold text-xs transition-all transform hover:scale-105 flex items-center gap-2">
+                                <span className="text-lg leading-none">📚</span> Ver Info de Tesis
+                            </button>
+                            {activeTool && (
+                                <div className="bg-white/90 backdrop-blur px-5 py-2 rounded-xl shadow-lg border border-slate-300 flex items-center gap-3">
+                                    <span className="text-xs font-bold text-slate-500 uppercase">Objeto Seleccionado:</span>
+                                    <span className="font-black text-[#005682] capitalize text-lg">{activeTool.replace('_', ' ')}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ESTANTE SUPERIOR (Z-40) */}
+                        <div className="absolute top-[8%] w-full flex justify-center z-40 pointer-events-auto">
+                            <div className="w-[85%] h-6 bg-[#94a3b8] rounded-sm shadow-[0_10px_20px_rgba(0,0,0,0.15)] border-b-[4px] border-[#64748b] flex justify-around items-end px-10">
+                                
+                                {currentStep === STEPS.MAKE_STOCK && (
+                                    <>
+                                        <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='tris'&&!activeTool?'guide-target':''} ${activeTool==='tris'?'opacity-40':''}`} onClick={() => handleToolSelect('tris')}>
+                                            <div className="w-10 h-14 bg-white border-2 border-slate-300 rounded-lg flex items-end p-1 shadow-md"><div className="w-full h-1/2 bg-slate-200 rounded"></div></div>
+                                            <span className="text-[9px] font-black mt-1 bg-white text-slate-700 px-1 rounded shadow">Tris</span>
+                                        </div>
+                                        <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='boric'&&!activeTool?'guide-target':''} ${activeTool==='boric'?'opacity-40':''}`} onClick={() => handleToolSelect('boric')}>
+                                            <div className="w-10 h-14 bg-white border-2 border-slate-300 rounded-lg flex items-end p-1 shadow-md"><div className="w-full h-1/2 bg-slate-200 rounded"></div></div>
+                                            <span className="text-[9px] font-black mt-1 bg-white text-slate-700 px-1 rounded shadow">Ác. Bórico</span>
+                                        </div>
+                                        <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='edta'&&!activeTool?'guide-target':''} ${activeTool==='edta'?'opacity-40':''}`} onClick={() => handleToolSelect('edta')}>
+                                            <div className="w-10 h-14 bg-white border-2 border-slate-300 rounded-lg flex items-end p-1 shadow-md"><div className="w-full h-1/2 bg-slate-200 rounded"></div></div>
+                                            <span className="text-[9px] font-black mt-1 bg-white text-slate-700 px-1 rounded shadow">EDTA</span>
+                                        </div>
+                                        <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='water'&&!activeTool?'guide-target':''} ${activeTool==='water'?'opacity-40':''}`} onClick={() => handleToolSelect('water')}>
+                                            <div className="w-12 h-20 bg-white/60 border-2 border-blue-200 rounded-lg flex items-end shadow-md"><div className="w-full h-full bg-blue-400/20 rounded-b-md"></div></div>
+                                            <span className="text-[9px] font-black mt-1 bg-white text-slate-700 px-1 rounded shadow">dH2O</span>
+                                        </div>
+                                    </>
+                                )}
+                                
+                                {currentStep === STEPS.DILUTE && (
+                                    <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='water'&&!activeTool?'guide-target':''} ${activeTool==='water'?'opacity-40':''}`} onClick={() => handleToolSelect('water')}>
+                                        <div className="w-14 h-24 bg-white/60 border-2 border-blue-200 rounded-lg flex items-end shadow-md"><div className="w-full h-full bg-blue-400/20 rounded-b-md"></div></div>
+                                        <span className="text-[10px] font-black mt-1 bg-white text-slate-700 px-2 rounded shadow">Agua Destilada</span>
+                                    </div>
+                                )}
+
+                                {currentStep === STEPS.PREP_AGAROSE && (
+                                    <>
+                                        <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='agarose'&&!activeTool?'guide-target':''} ${activeTool==='agarose'?'opacity-40':''}`} onClick={() => handleToolSelect('agarose')}>
+                                            <div className="w-14 h-20 bg-white border-2 border-slate-300 rounded-t-sm rounded-b-xl flex items-end p-1 shadow-md"><div className="w-full h-1/2 bg-slate-100 rounded-b-lg"></div></div>
+                                            <span className="text-[10px] font-black mt-2 bg-white text-slate-700 px-2 py-0.5 rounded shadow border border-slate-300">Agarosa</span>
+                                        </div>
+                                        <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='tbe1x'&&!activeTool?'guide-target':''} ${activeTool==='tbe1x'?'opacity-40':''}`} onClick={() => handleToolSelect('tbe1x')}>
+                                            <div className="w-16 h-24 bg-white/60 border-2 border-blue-200 rounded-lg flex items-end shadow-md"><div className="w-full h-3/4 bg-blue-400/30 rounded-b-md"></div></div>
+                                            <span className="text-[10px] font-black mt-2 bg-white text-slate-700 px-2 py-0.5 rounded shadow border border-slate-300">TBE 1X</span>
+                                        </div>
+                                    </>
+                                )}
+
+                                {currentStep === STEPS.CAST && (
+                                    <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='comb'&&!activeTool?'guide-target':''} ${activeTool==='comb'?'opacity-40':''}`} onClick={() => handleToolSelect('comb')}>
+                                        <div className="w-20 h-10 bg-slate-800 flex justify-around items-end shadow-md rounded-t-sm"><div className="w-3 h-5 bg-slate-800"></div><div className="w-3 h-5 bg-slate-800"></div><div className="w-3 h-5 bg-slate-800"></div><div className="w-3 h-5 bg-slate-800"></div></div>
+                                        <span className="text-[10px] font-black mt-2 bg-white text-slate-700 px-2 py-0.5 rounded shadow border border-slate-300">Peine</span>
+                                    </div>
+                                )}
+
+                                {currentStep === STEPS.CHAMBER && (
+                                    <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='tbe1x'&&!activeTool?'guide-target':''} ${activeTool==='tbe1x'?'opacity-40':''}`} onClick={() => handleToolSelect('tbe1x')}>
+                                        <div className="w-16 h-24 bg-white/60 border-2 border-blue-200 rounded-lg flex items-end shadow-md"><div className="w-full h-3/4 bg-blue-400/30 rounded-b-md"></div></div>
+                                        <span className="text-[10px] font-black mt-2 bg-white text-slate-700 px-2 py-0.5 rounded shadow border border-slate-300">Buffer TBE 1X</span>
+                                    </div>
+                                )}
+
+                                {(currentStep === STEPS.LOAD) && (
+                                    <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='tipbox'?'guide-target':''}`} onClick={handleTipBox}>
+                                        <div className="w-24 h-16 bg-yellow-400 border-2 border-yellow-600 rounded-t-lg shadow-inner flex items-center justify-center text-xs font-black text-yellow-900">P20</div>
+                                        <span className="text-[10px] font-black mt-2 bg-white text-slate-700 px-2 py-0.5 rounded shadow border border-slate-300">Caja Puntas</span>
+                                    </div>
+                                )}
+
+                                {currentStep === STEPS.RUN && (
+                                    <div className={`cursor-pointer flex flex-col items-center svg-hover-glow mb-1 transition-all ${nextTarget==='lid'&&!activeTool?'guide-target':''} ${activeTool==='lid'?'opacity-40':''}`} onClick={() => handleToolSelect('lid')}>
+                                        <div className="w-32 h-10 bg-slate-400/50 border-4 border-slate-500 rounded-lg flex justify-between items-center px-3 shadow-lg"><div className="w-4 h-4 bg-black rounded-full shadow"></div><div className="w-4 h-4 bg-red-600 rounded-full shadow"></div></div>
+                                        <span className="text-[10px] font-black mt-2 bg-white text-slate-700 px-2 py-0.5 rounded shadow border border-slate-300">Tapa Cámara</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* MESA PRINCIPAL (Centro) */}
+                        <div className="flex-1 flex justify-center items-center pb-12 relative z-20 pointer-events-auto w-full px-8 overflow-hidden">
+                            <div className="flex flex-wrap justify-center items-end gap-16 z-10 w-full">
+                                
+                                {/* Beaker (Vaso de precipitados) */}
+                                {(currentStep === STEPS.MAKE_STOCK || currentStep === STEPS.DILUTE) && (
+                                    <div className={`flex flex-col items-center cursor-pointer transition-all ${nextTarget==='beaker'?'guide-target scale-105':''} ${activeTool==='beaker'?'opacity-40':''}`} onClick={() => interactWithTarget('beaker')}>
+                                        <svg width="100" height="130" viewBox="0 0 100 120" className="drop-shadow-2xl">
+                                            <defs><clipPath id="b_clip"><path d="M10,20 L90,20 L85,110 Q85,115 80,115 L20,115 Q15,115 15,110 Z" /></clipPath></defs>
+                                            <g clipPath="url(#b_clip)">
+                                                {beakerState.length > 0 && <rect x="0" y={115 - (beakerState.length*20)} width="100" height={beakerState.length*20} fill={beakerState.includes('water1') ? "rgba(147,197,253,0.5)" : "#f1f5f9"} className="liquid-transition"/>}
+                                            </g>
+                                            <path d="M10,20 L90,20 L85,110 Q85,115 80,115 L20,115 Q15,115 15,110 Z" fill="rgba(255,255,255,0.5)" stroke="#475569" strokeWidth="4" />
+                                        </svg>
+                                        <span className="text-xs font-black mt-4 bg-white text-slate-800 px-4 py-1 rounded shadow-lg border border-slate-300">Vaso 10X</span>
+                                    </div>
+                                )}
+
+                                {/* Balanza con vitrina */}
+                                {(currentStep === STEPS.PREP_AGAROSE) && (
+                                    <div className={`flex flex-col items-center cursor-pointer transition-all ${nextTarget==='scale'?'guide-target scale-105':''}`} onClick={() => interactWithTarget('scale')}>
+                                        <div className="relative">
+                                            <div className="w-44 h-32 border-2 border-slate-300 bg-white/20 backdrop-blur-[1px] absolute bottom-12 rounded-t-lg border-b-0 pointer-events-none"></div>
+                                            <div className="w-44 h-10 bg-slate-300 rounded-t-lg border-2 border-slate-400 flex justify-center items-end pb-1 shadow-inner">{scaleValue!=="0.00"&&<div className="w-14 h-4 bg-white rounded-full shadow-sm"></div>}</div>
+                                            <div className="w-44 h-20 bg-slate-800 rounded-b-xl flex flex-col items-center justify-center border-t-4 border-slate-600 shadow-2xl">
+                                                <div className="font-mono text-green-400 text-3xl bg-black px-4 py-1 rounded shadow-inner tracking-widest">{scaleValue}g</div>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs font-black mt-4 bg-white text-slate-800 px-4 py-1 rounded shadow-lg border border-slate-300">Balanza Analítica</span>
+                                    </div>
+                                )}
+                                
+                                {/* Matraz con mascara (clip-path) para líquido */}
+                                {(currentStep >= STEPS.DILUTE && currentStep <= STEPS.CAST) && (
+                                    <div className={`flex flex-col items-center cursor-pointer transition-all ${nextTarget==='flask'?'guide-target scale-105':''} ${activeTool==='flask'?'opacity-40':''}`} onClick={() => interactWithTarget('flask')}>
+                                        <svg width="120" height="160" viewBox="0 0 100 140" className="drop-shadow-2xl">
+                                            <defs><clipPath id="flask_clip"><path d="M40,10 L60,10 L60,50 L90,120 Q95,130 85,130 L15,130 Q5,130 10,120 L40,50 Z" /></clipPath></defs>
+                                            <g clipPath="url(#flask_clip)">
+                                                {flaskState.includes('water2') && <rect x="0" y="60" width="100" height="80" fill="rgba(147,197,253,0.3)" />}
+                                                {flaskState.includes('agarose') && <rect x="0" y="115" width="100" height="20" fill="#f1f5f9" />}
+                                                {flaskState.includes('tbe1x') && <rect x="0" y="70" width="100" height="70" fill="rgba(147,197,253,0.5)" />}
+                                                {flaskState.includes('melted') && <rect x="0" y="70" width="100" height="70" fill="rgba(255, 255, 255, 0.4)" />}
+                                            </g>
+                                            <path d="M40,10 L60,10 L60,50 L90,120 Q95,130 85,130 L15,130 Q5,130 10,120 L40,50 Z" fill="rgba(255,255,255,0.4)" stroke="#475569" strokeWidth="4" />
+                                            <path d="M 25 110 L 45 60" stroke="rgba(255,255,255,0.8)" strokeWidth="3" fill="none" strokeLinecap="round" />
+                                        </svg>
+                                        <span className="text-xs font-black mt-4 bg-white text-slate-800 px-4 py-1 rounded shadow-lg border border-slate-300">Matraz Erlenmeyer</span>
+                                    </div>
+                                )}
+
+                                {/* Microondas */}
+                                {currentStep === STEPS.HEAT && (
+                                    <div className={`flex flex-col items-center cursor-pointer transition-all ${nextTarget==='microwave'?'guide-target scale-105':''}`} onClick={() => interactWithTarget('microwave')}>
+                                        <div className={`w-56 h-48 border-4 border-slate-700 bg-slate-200 rounded-2xl flex items-center justify-between p-3 shadow-2xl ${isMicrowaving?'bg-orange-50 shadow-[0_0_40px_rgba(251,146,60,0.4)]':''}`}>
+                                            <div className="w-36 h-36 bg-slate-800 rounded-xl flex items-center justify-center shadow-inner relative overflow-hidden">
+                                                <div className="absolute inset-0 border-[12px] border-slate-900 rounded-xl pointer-events-none"></div>
+                                                {isMicrowaving && <div className="text-5xl animate-spin">🌀</div>}
+                                            </div>
+                                            <div className="w-10 h-36 bg-slate-300 border-2 border-slate-400 rounded-lg flex flex-col items-center pt-2">
+                                                <div className="w-8 h-6 bg-black text-red-500 font-mono text-[8px] flex items-center justify-center rounded">1:30</div>
+                                                <div className="w-6 h-6 rounded-full bg-slate-400 mt-2 shadow"></div>
+                                                <div className="w-6 h-6 rounded-full bg-slate-400 mt-2 shadow"></div>
+                                            </div>
+                                        </div>
+                                        <span className="text-xs font-black mt-4 bg-white text-slate-800 px-4 py-1 rounded shadow-lg border border-slate-300">Microondas</span>
+                                    </div>
+                                )}
+
+                                {/* BANDEJA (TRAY) - Aparece para verter gel y montar en cámara */}
+                                {(currentStep === STEPS.CAST || currentStep === STEPS.CHAMBER) && trayState !== 'in_uv' && chamberState === 'empty' && (
+                                    <div className={`flex flex-col items-center cursor-pointer transition-all z-10 ${nextTarget==='tray'?'guide-target scale-105':''} ${activeTool==='gel_solid'?'opacity-40':''}`} onClick={() => interactWithTarget('tray')}>
+                                        <svg width="300" height="150" viewBox="0 0 200 120" className="drop-shadow-2xl">
+                                            <rect x="10" y="10" width="180" height="100" fill="#cbd5e1" stroke="#64748b" strokeWidth="6" rx="6" />
+                                            {trayState !== 'empty' && <rect x="16" y="16" width="168" height="88" fill={trayState === 'solid' ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.4)"} rx="2" />}
+                                            {trayState === 'combed' && <g transform="translate(0,-12)"><rect x="30" y="15" width="140" height="12" fill="#0f172a" rx="2" />{[40, 75, 110, 145].map(x=><rect key={x} x={x} y="25" width="15" height="18" fill="#0f172a" />)}</g>}
+                                            {trayState === 'solid' && <g>{[40, 75, 110, 145].map(x=><rect key={x} x={x} y="25" width="15" height="10" fill="#94a3b8" />)}</g>}
+                                        </svg>
+                                        <span className="text-xs font-black mt-3 bg-white text-slate-800 px-4 py-1 rounded shadow-lg border border-slate-300">Bandeja de Moldeo</span>
+                                    </div>
+                                )}
+
+                                {/* CÁMARA */}
+                                {(currentStep >= STEPS.CHAMBER && currentStep <= STEPS.UV) && !(currentStep === STEPS.UV && chamberState === 'empty') && (
+                                    <div className={`flex flex-col items-center cursor-pointer transition-all z-10 ${nextTarget==='chamber'?'guide-target scale-105':''}`} onClick={() => interactWithTarget('chamber')}>
+                                        <div className="flex items-center justify-between w-[380px] bg-slate-900 text-white px-5 py-2 rounded-t-xl font-bold text-sm shadow-xl border-b-2 border-slate-700">
+                                            <div className="flex items-center gap-3"><div className="w-4 h-4 bg-black rounded-full border-2 border-slate-500 shadow"></div>CÁTODO (-) NEGRO</div>
+                                        </div>
+                                        <div className="relative w-[380px] h-[360px] bg-slate-200 border-x-[6px] border-slate-400 shadow-[inset_0_-15px_30px_rgba(0,0,0,0.2)] flex justify-center pt-8">
+                                            {(chamberState==='has_buffer'||chamberState==='lid_on'||chamberState==='running'||chamberState==='done') && <div className="absolute inset-0 bg-blue-500/20 mix-blend-multiply z-0 transition-all duration-1000"></div>}
+                                            
+                                            {chamberState !== 'empty' && (
+                                                <div className="relative w-[280px] h-[280px] glass-effect border-2 border-white/60 z-10 flex justify-center pt-5 shadow-sm rounded-sm">
+                                                    {/* Pocillos e interaccion */}
+                                                    <div className="flex justify-around w-full px-5 absolute top-5 z-20">
+                                                        {[0,1,2,3].map(idx => (
+                                                            <div key={idx} onClick={(e) => { e.stopPropagation(); handleWell(idx); }} className={`w-12 h-6 border-[3px] rounded-sm cursor-pointer transition-all ${activeTool==='P20'&&liquidInTip.vol>0&&!wells[idx]?'border-green-400 bg-green-100/50 animate-pulse':'border-slate-400 shadow-inner'}`}>
+                                                                {wells[idx] && <div className={`w-full h-full opacity-80 rounded-sm ${wells[idx]==='ladder'?'bg-purple-600':wells[idx]==='sample_dyed'?'bg-blue-600':'bg-transparent'}`}></div>}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    {/* Bandas */}
+                                                    <div className="w-full h-full relative mt-5">
+                                                        {wells.map((type, idx) => type && <div key={idx} className={`absolute w-12 opacity-70 rounded-sm dna-band blur-[1px] ${type==='ladder'?'bg-purple-500':type==='sample_dyed'?'bg-blue-600':'bg-transparent'}`} style={{ left: `${(idx*25)+6}%`, top: `${runProgress*2.1}px`, height:'10px'}}></div>)}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Tapa Puesta */}
+                                            {(chamberState==='lid_on'||chamberState==='running'||chamberState==='done') && (
+                                                <div className="absolute inset-0 bg-slate-800/10 backdrop-blur-[2px] z-30 border-[10px] border-slate-500/80 flex flex-col justify-between p-2 shadow-inner pointer-events-none">
+                                                    <div className="w-full flex justify-center"><div className="w-8 h-8 bg-black rounded-full shadow-lg border-2 border-slate-400"></div></div>
+                                                    <div className="w-full flex justify-center"><div className="w-8 h-8 bg-red-600 rounded-full shadow-lg border-2 border-slate-400"></div></div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center justify-between w-[380px] bg-red-100 text-red-900 px-5 py-2 rounded-b-xl font-bold text-sm shadow-xl border-t-2 border-red-300">
+                                            <div className="flex items-center gap-3"><div className="w-4 h-4 bg-red-600 rounded-full border-2 border-red-800 shadow"></div>ÁNODO (+) ROJO</div>
+                                        </div>
+                                        <span className="text-xs font-black mt-4 bg-white text-slate-800 px-4 py-1 rounded shadow-lg border border-slate-300">Cámara de Electroforesis</span>
+                                    </div>
+                                )}
+
+                                {/* TRANSILUMINADOR - Fase Final */}
+                                {currentStep === STEPS.UV && <SVGTransilluminator />}
+
+                            </div>
+                        </div>
+
+                        {/* MESA INFERIOR (z-30) */}
+                        <div className="absolute bottom-0 w-full flex flex-col z-30 pointer-events-auto">
+                            <div className="w-full h-[150px] bg-[#94a3b8] border-t-[10px] border-[#64748b] flex justify-between items-end pb-4 px-12 shadow-[inset_0_20px_20px_rgba(0,0,0,0.1)] gap-8">
+                                
+                                {/* Pipeta, Caja de Puntas y Basura (Activos en Fase 7) */}
+                                {(currentStep === STEPS.LOAD) && (
+                                    <>
+                                        <div className="flex gap-10 items-end">
+                                            {/* Pipeta en mesa */}
+                                            <div className="relative w-28 h-28 flex flex-col items-center justify-end pb-2">
+                                                <SVGPipette isRack={true} />
+                                            </div>
+                                            
+                                            {/* Caja de Puntas animada */}
+                                            <div className="relative w-36 h-28 flex flex-col items-center justify-end pb-4">
+                                                <SVGTipBoxInteractive isOpen={isTipBoxOpen} onClick={handleTipBox} isTarget={nextTarget==='tipbox'} />
+                                            </div>
+
+                                            {/* Gradilla */}
+                                            <div className="flex flex-col items-center mb-3">
+                                                <span className="text-[10px] font-bold text-slate-200 uppercase tracking-widest mb-2 bg-slate-700 px-3 py-0.5 rounded shadow">Gradilla de Muestras</span>
+                                                <div className="flex gap-5 bg-[#7e8e9f] p-4 rounded-xl border-2 border-[#5c6d80] shadow-inner items-end h-[95px]">
+                                                    <SVGEppendorf type="ladder" color="#9333ea" label="Ladder" />
+                                                    <SVGEppendorf type="dye" color="#1e3a8a" label="Dye" />
+                                                    <SVGEppendorf type="sample" color={samplesDyed ? "#3b82f6" : "#e2e8f0"} label="Muestra" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <SVGTrashBinRPBI />
+                                    </>
+                                )}
+
+                                {/* Fuente de poder */}
+                                {currentStep === STEPS.RUN && (
+                                    <div className="flex gap-4 items-end mb-3">
+                                        <div className={`cursor-pointer bg-slate-800 p-5 rounded-2xl shadow-2xl border-2 border-slate-600 text-center transition-all ${nextTarget==='power'?'guide-target scale-105':''}`} onClick={() => interactWithTarget('power')}>
+                                            <div className="text-xs text-slate-400 font-mono mb-2 font-bold tracking-widest">POWER SUPPLY</div>
+                                            <div className="bg-black text-green-400 font-mono text-4xl px-8 py-2 rounded shadow-inner mb-4 border border-slate-700">{chamberState==='running'?'100V':'000V'}</div>
+                                            <button className={`w-full py-2 text-sm font-black rounded-lg shadow-lg uppercase ${chamberState==='running'?'bg-red-500 text-white animate-pulse':'bg-green-500 text-white'}`}>RUN / STOP</button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <div className="w-full h-16 bg-[#475569] border-t-[3px] border-[#334155] shadow-2xl flex justify-center gap-12 px-10">
+                                {[1,2,3].map(i => <div key={i} className="w-56 h-12 mt-2 bg-[#64748b] border border-[#334155] rounded shadow-inner flex justify-center pt-2"><div className="w-24 h-2 bg-[#94a3b8] rounded-full shadow border border-[#475569]"></div></div>)}
+                            </div>
+                        </div>
+
+                        {/* P20 Modal Vol */}
+                        {showVolModal && activeTool === 'P20' && (
+                            <div className="absolute inset-0 bg-slate-900/70 z-50 flex items-center justify-center backdrop-blur-sm pointer-events-auto">
+                                <div className="bg-white p-8 rounded-3xl shadow-2xl w-80 text-center border-2 border-slate-200">
+                                    <h3 className="font-bold text-[#005682] text-2xl mb-6">Ajustar P20</h3>
+                                    <div className="flex justify-center items-center gap-6 mb-8">
+                                        <button onClick={() => {setTempVol(v => Math.max(2, v-0.5)); AudioEngine.playClick();}} className="w-14 h-14 bg-slate-100 rounded-full font-bold text-3xl hover:bg-slate-200 shadow-md">-</button>
+                                        <input type="number" value={tempVol.toFixed(1)} readOnly className="w-24 text-center text-4xl font-mono border-b-4 border-[#005682] outline-none bg-transparent font-bold text-slate-800" />
+                                        <button onClick={() => {setTempVol(v => Math.min(20, v+0.5)); AudioEngine.playClick();}} className="w-14 h-14 bg-slate-100 rounded-full font-bold text-3xl hover:bg-slate-200 shadow-md">+</button>
+                                    </div>
+                                    <button onClick={() => {setPipetteVol(tempVol); setShowVolModal(false); AudioEngine.playClick();}} className="w-full py-4 bg-[#005682] text-white font-bold text-lg rounded-xl shadow-lg hover:bg-[#003b57] transition-colors">Guardar y Cerrar</button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* -- ÁREA DEL CUADERNO (DERECHA) -- */}
+                    <div className="w-[420px] bg-white flex flex-col shadow-[-20px_0_40px_rgba(0,0,0,0.15)] z-40 border-l border-slate-300 pointer-events-auto relative">
+                        <div className="bg-notebook-header text-white p-6 flex items-center gap-5 relative overflow-hidden">
+                            <div className="absolute -right-4 top-0 opacity-10 scale-150">📘</div>
+                            <div className="bg-white/20 p-3 rounded-lg backdrop-blur shadow-sm"><span className="text-3xl">📘</span></div>
+                            <div>
+                                <div className="text-[10px] font-black text-blue-200 tracking-widest mb-1">SIMULADOR PRO</div>
+                                <div className="text-xl font-bold leading-none">Electroforesis de ADN</div>
+                            </div>
+                        </div>
+                        <div className="bg-notebook-sub text-white px-6 py-4 flex items-center justify-between shadow-inner border-y border-slate-800">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full border-2 border-white/50 flex items-center justify-center font-bold text-sm">{currentStep}</div>
+                                <span className="text-base font-bold tracking-widest uppercase">Protocolo de Laboratorio</span>
+                            </div>
+                            {/* Puntuación en tiempo real en la libreta */}
+                            <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
+                                <span className="text-sm font-bold">Puntos:</span>
+                                <span className={`font-black text-lg ${score < 70 ? 'text-red-300' : 'text-green-300'}`}>{score}</span>
+                            </div>
+                        </div>
+                        <div className="px-6 py-5 border-b border-slate-200 bg-slate-50 flex items-center gap-4">
+                            <div className="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                                <div className="h-full bg-blue-500 transition-all duration-500" style={{ width: `${(completedTasks.length / PROTOCOL_DATA[currentStep].tasks.length) * 100}%` }}></div>
+                            </div>
+                            <div className="text-sm font-black text-slate-500 bg-white px-3 py-1 rounded-full shadow-md border border-slate-300">
+                                {completedTasks.length}/{PROTOCOL_DATA[currentStep].tasks.length}
+                            </div>
+                        </div>
+
+                        {currentStep === STEPS.UV && completedTasks.length === PROTOCOL_DATA[STEPS.UV].tasks.length ? (
+                            <div className="p-6 overflow-y-auto flex-1 flex flex-col animate-fade-in">
+                                <div className={`p-6 rounded-2xl border-2 shadow-lg mb-6 ${score >= 90 ? 'bg-green-50 border-green-200' : score >= 70 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}`}>
+                                    <h3 className="text-2xl font-black text-center mb-2 text-slate-800">Evaluación Práctica</h3>
+                                    <div className="flex justify-center items-center gap-4 mb-4">
+                                        <div className="text-5xl">
+                                            {score >= 90 ? '🏆' : score >= 70 ? '👍' : '🤔'}
+                                        </div>
+                                        <div className="text-center">
+                                             <div className="text-sm font-bold text-slate-500 uppercase">Puntuación Final</div>
+                                             <div className={`text-4xl font-black ${score >= 90 ? 'text-green-600' : score >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>{score} / 100</div>
+                                        </div>
+                                    </div>
+                                     <p className="text-center font-bold text-slate-700 mb-4">
+                                        {score >= 90 ? '¡Excelente técnica de electroforesis!' : score >= 70 ? 'Buen trabajo, pero cuida los detalles del protocolo.' : 'Debes practicar más. Revisa los errores abajo.'}
+                                    </p>
+
+                                    {penalties.length > 0 && (
+                                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mt-4">
+                                            <h4 className="font-bold text-red-600 mb-3 flex items-center">⚠️ Errores y Penalizaciones:</h4>
+                                            <ul className="space-y-3">
+                                                {penalties.map((p, idx) => (
+                                                    <li key={idx} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                                                        <div className="flex justify-between font-bold text-slate-800">
+                                                            <span>{p.reason}</span>
+                                                            <span className="text-red-500">-{p.points} pts</span>
+                                                        </div>
+                                                         <p className="text-slate-600 mt-1 text-xs italic">💡 {p.advice}</p>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button 
+                                    onClick={() => window.location.reload()}
+                                    className="w-full bg-[#005682] text-white py-4 rounded-xl font-bold shadow-lg hover:bg-[#003b57] transition-transform hover:scale-105"
+                                >
+                                    ↻ Reiniciar Práctica Completa
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="p-6 overflow-y-auto flex-1 flex flex-col">
+                                <div className="bg-slate-100 p-4 rounded-2xl border border-slate-300 mb-6 shadow-inner">
+                                    <h3 className="font-bold text-[#005682] text-lg mb-2">{PROTOCOL_DATA[currentStep].title}</h3>
+                                    <p className="text-sm text-slate-600 font-medium leading-relaxed">{PROTOCOL_DATA[currentStep].desc}</p>
+                                </div>
+                                
+                                <div className="ml-2 pl-4 border-l-[3px] border-slate-200 flex-1">
+                                    {PROTOCOL_DATA[currentStep].tasks.map((task, idx) => {
+                                        const isDone = completedTasks.includes(task.id);
+                                        const isActive = !isDone && (idx === 0 || completedTasks.includes(PROTOCOL_DATA[currentStep].tasks[idx-1].id));
+                                        
+                                        return (
+                                            <div key={task.id} className={`flex items-start gap-4 mb-6 transition-all duration-300 ${isDone ? 'opacity-40' : isActive ? 'transform translate-x-2' : 'opacity-60'}`}>
+                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 
+                                                    ${isDone ? 'bg-green-500 text-white shadow-inner' : isActive ? 'bg-blue-600 text-white shadow-lg ring-4 ring-blue-200' : 'bg-slate-200 text-slate-500'}`}>
+                                                    {isDone ? '✓' : String.fromCharCode(97 + idx).toUpperCase()}
+                                                </div>
+                                                <div className={`text-sm ${isDone ? 'line-through text-slate-400' : 'text-slate-700 font-bold'} flex-1 leading-tight mt-1`}>
+                                                    {task.t}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {completedTasks.length === PROTOCOL_DATA[currentStep].tasks.length && currentStep < STEPS.UV && (
+                                    <button onClick={() => {setCurrentStep(p=>p+1); setCompletedTasks([]); setActiveTool(null); setFeedbackMsg(''); AudioEngine.playSuccess();}} className="w-full bg-[#005682] text-white py-4 rounded-xl font-black shadow-xl hover:bg-[#003b57] transition-transform hover:scale-105 text-lg mt-6 border-b-4 border-[#003b57]">
+                                        Siguiente Paso ▶
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<ElectrophoresisSim />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Riesgo Cardiometabólico - Edsel Méndez</title>
+    
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=Share+Tech+Mono&display=swap');
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0f172a; 
+            color: #e2e8f0;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .font-tech { font-family: 'Share Tech Mono', monospace; }
+
+        .med-bg-grid {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+        }
+
+        @keyframes heartbeat {
+            0% { transform: scale(1); }
+            14% { transform: scale(1.1); }
+            28% { transform: scale(1); }
+            42% { transform: scale(1.1); }
+            70% { transform: scale(1); }
+        }
+        .anim-heartbeat { animation: heartbeat 1.5s infinite; }
+
+        @keyframes scanline {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        .scanner-line {
+            position: absolute; width: 100%; height: 4px;
+            background: rgba(56, 189, 248, 0.8);
+            box-shadow: 0 0 10px rgba(56, 189, 248, 1);
+            animation: scanline 2.5s infinite linear;
+            z-index: 50; pointer-events: none;
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .anim-float { animation: float 3s ease-in-out infinite; }
+
+        /* Estilos de inputs */
+        .med-input {
+            background: rgba(15, 23, 42, 0.6); border: 2px solid #334155;
+            color: #38bdf8; border-radius: 0.5rem; padding: 0.5rem;
+            font-family: 'Share Tech Mono', monospace; font-size: 1rem;
+            text-align: center; transition: all 0.3s; width: 100%;
+        }
+        .med-input:focus {
+            outline: none; border-color: #38bdf8;
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); background: rgba(15, 23, 42, 0.9);
+        }
+        .med-select {
+            background: rgba(15, 23, 42, 0.8); border: 2px solid #334155;
+            color: #e2e8f0; border-radius: 0.5rem; padding: 0.5rem;
+            font-weight: bold; width: 100%; cursor: pointer; font-size: 0.9rem;
+        }
+        .med-select:focus { border-color: #38bdf8; outline: none; }
+
+        /* Tarjetas de Riesgo */
+        .risk-low { background: linear-gradient(135deg, #064e3b, #059669); box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
+        .risk-mod { background: linear-gradient(135deg, #78350f, #d97706); box-shadow: 0 0 20px rgba(245, 158, 11, 0.3); }
+        .risk-high { background: linear-gradient(135deg, #7f1d1d, #dc2626); box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+        .risk-vhigh { background: linear-gradient(135deg, #450a0a, #991b1b); box-shadow: 0 0 30px rgba(185, 28, 28, 0.5); border: 2px solid #ef4444;}
+        
+        .card-glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.05); }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- URL WEB APP DE GOOGLE SHEETS ACTUALIZADA ---
+        const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyryKQGcDJazp-eS5eu-JDp6WySxqKkhNq5zOO62pdkBMmJ3mJPg54qZ_s3V9PkGVrijw/exec";
+
+        // ==========================================
+        // MOTOR DE SONIDO (Web Audio API)
+        // ==========================================
+        const AudioEngine = {
+            ctx: null,
+            init() {
+                if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            playTone(freq, type, duration, vol=0.1) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + duration);
+            },
+            playClick() { this.init(); this.playTone(800, 'square', 0.05, 0.02); },
+            playNext() { this.init(); this.playTone(600, 'sine', 0.1, 0.05); setTimeout(() => this.playTone(900, 'sine', 0.15, 0.05), 100); },
+            playError() { this.init(); this.playTone(150, 'sawtooth', 0.2, 0.05); setTimeout(() => this.playTone(100, 'sawtooth', 0.3, 0.05), 150); },
+            playScan() { this.init(); for(let i=0; i<10; i++) { setTimeout(() => this.playTone(2000 + (i*100), 'triangle', 0.05, 0.01), i*50); } },
+            playHeartbeat() { this.init(); this.playTone(100, 'sine', 0.1, 0.2); setTimeout(() => this.playTone(100, 'sine', 0.2, 0.2), 200); },
+            playAlertHigh() { this.init(); this.playTone(800, 'square', 0.2, 0.05); setTimeout(() => this.playTone(600, 'square', 0.3, 0.05), 200); },
+            playSuccess() { this.init(); this.playTone(523.25, 'sine', 0.1, 0.05); setTimeout(() => this.playTone(659.25, 'sine', 0.1, 0.05), 100); setTimeout(() => this.playTone(783.99, 'sine', 0.3, 0.05), 200); }
+        };
+
+        // ==========================================
+        // LÓGICA CLÍNICA Y CONSTANTES
+        // ==========================================
+        const CONSTANTS = {
+            IMC: { NORMAL: 25, SOBREPESO: 30, OBESIDAD_I: 35 },
+            GLUCOSA: { NORMAL: 100, PREDIABETES: 126 },
+            HBA1C: { NORMAL: 5.7, PREDIABETES: 6.5 },
+            TRIGLICERIDOS: { NORMAL: 150, LIMITE: 200 },
+            COLESTEROL_TOTAL: { NORMAL: 200, LIMITE: 240 },
+            HDL_HOMBRES: { NORMAL: 40 }, HDL_MUJERES: { NORMAL: 50 },
+            LDL: { NORMAL: 100, LIMITE: 130, ALTO: 160 },
+            CINTURA_HOMBRES: { NORMAL: 90 }, CINTURA_MUJERES: { NORMAL: 80 },
+            ICC_HOMBRES: { RIESGO_ALTO: 0.95 }, ICC_MUJERES: { RIESGO_ALTO: 0.85 },
+            INDICE_TG_HDL: { ALTO_RIESGO: 3.5 },
+            INDICE_COL_HDL: { ALTO_RIESGO: 5.0 },
+            IPA: { RIESGO_LEVE: 10 },
+            FLI_MASLD: { BAJO: 30, ALTO: 60 }
+        };
+
+        const DYNAMOMETRY_P10 = {
+            hombres: { "20-29": 33.9, "30-39": 36.6, "40-49": 34.3, "50-59": 30.2, "60-69": 26.5, "70-99": 22.8 },
+            mujeres: { "20-29": 19.5, "30-39": 20.7, "40-49": 19.8, "50-59": 16.6, "60-69": 19.6, "70-99": 13.0 }
+        };
+
+        // ==========================================
+        // COMPONENTES VISUALES
+        // ==========================================
+        
+        // Dr. Metric (¡Ahora más amigable y expresivo!)
+        const SVGRobotFriendly = ({ emotion }) => {
+            // Emociones: 'normal', 'thinking', 'success', 'warning' (ahora 'preocupado' en vez de 'enojado')
+            let color = "#38bdf8"; // Cyan default
+            let mouth = "M 40 65 Q 50 75 60 65"; // Sonrisa
+            let eyeM = "circle";
+
+            if (emotion === 'success') {
+                color = "#34d399"; // Verde
+                mouth = "M 35 60 Q 50 80 65 60"; // Sonrisa grande
+                eyeM = "happy";
+            } else if (emotion === 'warning') {
+                color = "#fbbf24"; // Amarillo (Mantenemos amarillo de alerta pero menos agresivo)
+                mouth = "M 45 70 Q 50 68 55 70"; // Boca ondulada pequeña
+                eyeM = "worried"; // Nueva mirada de preocupación/empatía
+            } else if (emotion === 'thinking') {
+                color = "#a78bfa"; // Morado
+                mouth = "M 40 70 L 60 70"; // Recta
+                eyeM = "circle";
+            }
+
+            return (
+                <svg viewBox="0 0 100 100" className={`w-32 h-32 ${emotion === 'thinking' ? 'animate-pulse' : 'anim-float'}`}>
+                    <defs>
+                        <linearGradient id="screenGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#1e293b" />
+                            <stop offset="100%" stopColor="#0f172a" />
+                        </linearGradient>
+                    </defs>
+                    
+                    {/* Antena */}
+                    <path d="M 50 25 L 50 10" stroke={color} strokeWidth="3" strokeLinecap="round" />
+                    <circle cx="50" cy="8" r="5" fill={emotion === 'warning' ? '#f59e0b' : color} className="animate-pulse" />
+                    
+                    {/* Cabeza (Monitor) */}
+                    <rect x="15" y="25" width="70" height="60" rx="15" fill="#0f172a" stroke={color} strokeWidth="4" />
+                    <rect x="25" y="35" width="50" height="40" rx="8" fill="url(#screenGrad)" stroke="#334155" strokeWidth="2" />
+                    
+                    {/* Ojos expresivos */}
+                    {eyeM === 'happy' ? (
+                        <g fill="none" stroke={color} strokeWidth="4" strokeLinecap="round">
+                            <path d="M 32 48 Q 37 40 42 48" />
+                            <path d="M 58 48 Q 63 40 68 48" />
+                        </g>
+                    ) : eyeM === 'worried' ? (
+                        <g fill="none" stroke={color} strokeWidth="4" strokeLinecap="round">
+                            {/* Ojos inclinados hacia el centro (preocupación empática) */}
+                            <path d="M 32 46 Q 37 42 42 45" />
+                            <path d="M 58 45 Q 63 42 68 46" />
+                        </g>
+                    ) : (
+                        <g fill={color}>
+                            <circle cx="37" cy="48" r="5" className={emotion === 'thinking' ? 'animate-ping' : ''} />
+                            <circle cx="63" cy="48" r="5" className={emotion === 'thinking' ? 'animate-ping' : ''} />
+                        </g>
+                    )}
+
+                    {/* Boca */}
+                    <path d={mouth} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" className="transition-all duration-300" />
+                </svg>
+            );
+        };
+
+
+        // ==========================================
+        // APLICACIÓN PRINCIPAL (REACT)
+        // ==========================================
+        function CardioGame() {
+            // -- ESTADOS DEL JUEGO --
+            const [step, setStep] = useState(0); 
+            const [doctorMsg, setDoctorMsg] = useState("¡Hola! Soy el Dr. Metric. Seré tu asistente virtual. ¡Vamos a analizar juntos el riesgo cardiometabólico de nuestro paciente!");
+            const [doctorEmotion, setDoctorEmotion] = useState('normal'); 
+            const [showThesisInfo, setShowThesisInfo] = useState(false);
+            const [isSaving, setIsSaving] = useState(false);
+            
+            // -- DATOS COMPLETOS --
+            const [data, setData] = useState({
+                // Estación 1: Antropometria y Bioimpedancia (BIA)
+                full_name: '', age: '', gender: 'male', height_cm: '', weight: '', waist: '', hip: '',
+                bia_fat_p: '', bia_muscle_p: '', bia_visceral_p: '', bia_water_p: '', bia_metabolic_age: '',
+                // Estación 2: Signos
+                pas: '', pad: '', pa_d2_s: '', pa_d2_d: '', pa_d3_s: '', pa_d3_d: '', 
+                hr: '', rr: '', grip_right: '', grip_left: '',
+                // Estación 3: Laboratorio
+                glucose: '', hba1c: '', total_chol: '', hdl: '', ldl: '', triglycerides: '',
+                // Estación 4: Estilo de Vida y Comorbilidades
+                activity_days: '0', activity_duration: '', activity_intensity: 'light',
+                smoker_status: 'never', smoker_passive: 'no', smoker_years: '', smoker_daily_avg: '',
+                alcohol_freq: 'none', alcohol_dose: '', alcohol_type: 'beer',
+                dm_status: 'no', med_dm: 'no', hta_status: 'no', med_hta: 'no', dlp_status: 'no', med_dlp: 'no',
+                history_mi: 'no', history_angina: 'no', family_history: 'no'
+            });
+
+            const [results, setResults] = useState(null);
+
+            const handleChange = (e) => {
+                const { name, value } = e.target;
+                setData(prev => ({ ...prev, [name]: value }));
+                AudioEngine.playClick();
+            };
+
+            const validateStep = () => {
+                if (step === 1 && (!data.age || !data.height_cm || !data.weight || !data.waist || !data.hip)) return "Faltan medidas corporales clave en la estación 1.";
+                if (step === 2 && (!data.pas || !data.pad || !data.hr)) return "Se requiere al menos una toma de Presión Arterial y la Frecuencia Cardíaca.";
+                if (step === 3 && (!data.glucose || !data.total_chol || !data.hdl || !data.triglycerides)) return "Ingresa los lípidos y glucosa básicos para poder avanzar.";
+                return null;
+            };
+
+            const nextStep = () => {
+                AudioEngine.init();
+                const error = validateStep();
+                if (error) {
+                    AudioEngine.playError();
+                    setDoctorMsg("¡Uy, espera un poquito! " + error + " Por favor, complétalo para que podamos avanzar.");
+                    setDoctorEmotion('warning');
+                    return;
+                }
+
+                AudioEngine.playNext();
+                setDoctorEmotion('normal');
+                
+                if (step === 0) setDoctorMsg("Estación 1: Ingresa los datos personales. Si tienes información de bioimpedancia (BIA), ¡no dudes en incluirla!");
+                else if (step === 1) setDoctorMsg("Estación 2: ¡Vamos con los signos vitales! Anota la presión y yo me encargo de promediarla por ti.");
+                else if (step === 2) setDoctorMsg("Estación 3: Necesito los estudios de laboratorio. ¡Me encantan los números exactos!");
+                else if (step === 3) setDoctorMsg("Estación 4: Para terminar la recolección, registra el estilo de vida y los antecedentes clínicos.");
+                else if (step === 4) {
+                    setStep(5);
+                    setDoctorMsg("¡Bip, bop! Datos recibidos. Déjame encender mis procesadores para calcular los índices de riesgo...");
+                    setDoctorEmotion('thinking');
+                    processCalculations();
+                    return;
+                }
+                
+                setStep(s => s + 1);
+            };
+
+            const prevStep = () => {
+                AudioEngine.playClick();
+                setDoctorEmotion('normal');
+                setStep(s => Math.max(0, s - 1));
+            };
+
+            // ==========================================
+            // ENVÍO DE DATOS A GOOGLE SHEETS
+            // ==========================================
+            const sendToGoogleSheets = async (finalData, finalResults) => {
+                setIsSaving(true);
+                
+                const payload = {
+                    timestamp: new Date().toLocaleString('es-MX', { timeZone: 'America/Mexico_City' }),
+                    nombre: finalData.full_name || 'Anónimo',
+                    edad: finalData.age,
+                    sexo: finalData.gender === 'male' ? 'Masculino' : 'Femenino',
+                    peso: finalData.weight,
+                    estatura: finalData.height_cm,
+                    imc: finalResults.metrics.bmi,
+                    pas: finalResults.bp.s,
+                    pad: finalResults.bp.d,
+                    glucosa: finalData.glucose,
+                    colesterol_total: finalData.total_chol,
+                    trigliceridos: finalData.triglycerides,
+                    hdl: finalData.hdl,
+                    fuerza_agarre_der: finalData.grip_right || 0,
+                    fuerza_agarre_izq: finalData.grip_left || 0,
+                    score_riesgo: finalResults.riskProfile.score,
+                    nivel_riesgo: finalResults.riskProfile.level
+                };
+
+                try {
+                    await fetch(WEB_APP_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
+                    console.log("Datos despachados a Google Sheets exitosamente.");
+                } catch (error) {
+                    console.error("Error al despachar a Sheets:", error);
+                } finally {
+                    setIsSaving(false);
+                }
+            };
+
+
+            // ==========================================
+            // LÓGICA DE CÁLCULO
+            // ==========================================
+            const processCalculations = () => {
+                let beats = 0;
+                const beatInterval = setInterval(() => { AudioEngine.playHeartbeat(); beats++; if(beats > 3) clearInterval(beatInterval); }, 800);
+                AudioEngine.playScan();
+
+                setTimeout(async () => {
+                    const r = computeRiskEngine(data);
+                    setResults(r);
+                    
+                    // Dispara el envío a Sheets sin bloquear el hilo principal
+                    sendToGoogleSheets(data, r);
+                    
+                    let sheetMessage = "\n(Y no te preocupes, ya he respaldado la información en nuestra base de datos ☁️)";
+
+                    if (r.riskProfile.level.includes("ALTO")) {
+                        setDoctorEmotion('warning'); // Mostrará la nueva cara preocupada
+                        setDoctorMsg("Análisis finalizado. Hay indicadores de riesgo alto, ¡pero identificarlo es el primer paso! Revisa mi plan de acción para ayudar al paciente." + sheetMessage);
+                        AudioEngine.playAlertHigh();
+                    } else if (r.riskProfile.level.includes("BAJO")) {
+                        setDoctorEmotion('success');
+                        setDoctorMsg("¡Mis circuitos están felices! El paciente tiene un perfil cardiovascular excelente. ¡Un gran trabajo en su cuidado preventivo!" + sheetMessage);
+                        AudioEngine.playSuccess();
+                    } else {
+                        setDoctorEmotion('normal');
+                        setDoctorMsg("¡Cálculos listos! El perfil es bueno, pero tenemos áreas de oportunidad. Veamos qué podemos optimizar en la tarjeta de resultados." + sheetMessage);
+                        AudioEngine.playSuccess();
+                    }
+                    
+                    setStep(6);
+                }, 3500);
+            };
+
+            const getAverageBP = (d) => {
+                const bp_readings = [];
+                if (d.pas && d.pad) bp_readings.push({ s: parseFloat(d.pas), d: parseFloat(d.pad) });
+                if (d.pa_d2_s && d.pa_d2_d) bp_readings.push({ s: parseFloat(d.pa_d2_s), d: parseFloat(d.pa_d2_d) });
+                if (d.pa_d3_s && d.pa_d3_d) bp_readings.push({ s: parseFloat(d.pa_d3_s), d: parseFloat(d.pa_d3_d) });
+                
+                if (bp_readings.length === 0) return { s: 0, d: 0, source: 'Ninguna' };
+                
+                let s = Math.round(bp_readings.reduce((sum, r) => sum + r.s, 0) / bp_readings.length);
+                let d_val = Math.round(bp_readings.reduce((sum, r) => sum + r.d, 0) / bp_readings.length);
+                return { s, d: d_val, source: `Promedio de ${bp_readings.length} tomas` };
+            };
+
+            const computeRiskEngine = (d) => {
+                const age = parseFloat(d.age) || 0;
+                const weight = parseFloat(d.weight) || 0;
+                const height_m = (parseFloat(d.height_cm) || 0) / 100;
+                const waist = parseFloat(d.waist) || 0;
+                const hip = parseFloat(d.hip) || 0;
+                
+                const avgBP = getAverageBP(d);
+                const pas = avgBP.s;
+                const pad = avgBP.d;
+
+                const tg = parseFloat(d.triglycerides) || 0;
+                const hdl = parseFloat(d.hdl) || 0;
+                const chol = parseFloat(d.total_chol) || 0;
+                const ldl = parseFloat(d.ldl) || 0;
+                const glucose = parseFloat(d.glucose) || 0;
+                const hba1c = parseFloat(d.hba1c) || 0;
+                
+                const grip_r = parseFloat(d.grip_right) || 0;
+                const grip_l = parseFloat(d.grip_left) || 0;
+                const s_days = parseFloat(d.activity_days) || 0;
+                const s_dur = parseFloat(d.activity_duration) || 0;
+                const sm_years = parseFloat(d.smoker_years) || 0;
+                const sm_qty = parseFloat(d.smoker_daily_avg) || 0;
+
+                const m = {};
+                m.bmi = parseFloat((weight / (height_m * height_m)).toFixed(1));
+                if (m.bmi < 18.5) m.bmi_c = "Bajo Peso";
+                else if (m.bmi < CONSTANTS.IMC.NORMAL) m.bmi_c = "Normal";
+                else if (m.bmi < CONSTANTS.IMC.SOBREPESO) m.bmi_c = "Sobrepeso";
+                else if (m.bmi < CONSTANTS.IMC.OBESIDAD_I) m.bmi_c = "Obesidad I";
+                else m.bmi_c = "Obesidad II+";
+
+                m.icc = parseFloat((waist / hip).toFixed(2));
+                const iccCutoff = d.gender === 'male' ? CONSTANTS.ICC_HOMBRES.RIESGO_ALTO : CONSTANTS.ICC_MUJERES.RIESGO_ALTO;
+                m.icc_c = m.icc >= iccCutoff ? "Alto Riesgo Abdominal" : "Normal";
+
+                m.tg_hdl = parseFloat((tg / hdl).toFixed(2));
+                m.tg_hdl_c = m.tg_hdl >= CONSTANTS.INDICE_TG_HDL.ALTO_RIESGO ? "Alto Riesgo (Resistencia Insulina)" : "Normal";
+                
+                m.chol_hdl = parseFloat((chol / hdl).toFixed(2));
+                m.chol_hdl_c = m.chol_hdl >= CONSTANTS.INDICE_COL_HDL.ALTO_RIESGO ? "Alto Riesgo Aterogénico" : "Normal";
+
+                const ln_tg = Math.log(tg);
+                const ln_waist = Math.log(waist);
+                const X = (0.953 * ln_tg) + (0.139 * m.bmi) + (0.718 * ln_waist) - 13.9;
+                m.fli = parseFloat(((Math.exp(X) / (1 + Math.exp(X))) * 100).toFixed(1));
+                m.fli_c = m.fli >= CONSTANTS.FLI_MASLD.ALTO ? "Alto Riesgo (MASLD)" : (m.fli >= CONSTANTS.FLI_MASLD.BAJO ? "Riesgo Moderado" : "Bajo Riesgo");
+
+                if (d.smoker_status === 'active' && sm_qty > 0 && sm_years > 0) {
+                    m.ipa = parseFloat(((sm_qty / 20) * sm_years).toFixed(1));
+                } else { m.ipa = 0; }
+
+                const hs = { dm: 'no', hta: 'no', dlp: 'no' };
+                if (d.dm_status === 'yes') hs.dm = 'dx'; else if (d.med_dm === 'yes_freq') hs.dm = 'meds';
+                if (d.hta_status === 'yes') hs.hta = 'dx'; else if (d.med_hta === 'yes_freq') hs.hta = 'meds';
+                if (d.dlp_status === 'yes') hs.dlp = 'dx'; else if (d.med_dlp === 'yes_freq') hs.dlp = 'meds';
+
+                let dynFactor = null;
+                let dynScoreAdd = 0;
+                let gripText = "Fuerza No Evaluada";
+                if (grip_r > 0 || grip_l > 0) {
+                    const maxG = Math.max(grip_r, grip_l);
+                    let aR = age <= 29 ? "20-29" : age <= 39 ? "30-39" : age <= 49 ? "40-49" : age <= 59 ? "50-59" : age <= 69 ? "60-69" : "70-99";
+                    const p10 = DYNAMOMETRY_P10[d.gender === 'male' ? 'hombres' : 'mujeres'][aR];
+                    if (maxG < p10) {
+                        dynScoreAdd = 15;
+                        dynFactor = { text: `Posible Sarcopenia (Fuerza ${maxG}kg < P10 ${p10}kg)`, class: 'risk-high' };
+                        gripText = `Fuerza Baja (${maxG}kg)`;
+                    } else {
+                        gripText = `Fuerza Normal (${maxG}kg)`;
+                    }
+                }
+
+                let score = 0;
+                let f = []; 
+
+                if (age >= 18) { 
+                    if ((age >= 45 && d.gender === 'male') || (age >= 55 && d.gender === 'female')) score += 10;
+
+                    if (d.history_mi === 'yes') { score += 50; f.push({ text: "Infarto Previo Diagnosticado", class: "risk-high" }); }
+                    if (d.history_angina === 'yes') { score += 30; f.push({ text: "Angina de Pecho (Síntomas)", class: "risk-high" }); }
+
+                    // DM
+                    if (hs.dm === 'dx') { score += 30; f.push({ text: "Diabetes Mellitus", class: "risk-high" }); }
+                    else if (hs.dm === 'meds' || hba1c >= 6.5 || glucose >= 126) { score += 20; f.push({ text: "Sospecha de DM o Mal Control", class: "risk-high" }); }
+                    else if (glucose >= 100 || (hba1c >= 5.7 && hba1c < 6.5)) { score += 10; f.push({ text: "Prediabetes / Glucosa Alterada", class: "risk-mod" }); }
+
+                    // HTA
+                    if (hs.hta === 'dx') { score += 25; f.push({ text: "Hipertensión Arterial", class: "risk-high" }); }
+                    else if (hs.hta === 'meds' || pas >= 140 || pad >= 90) { score += 20; f.push({ text: `Presión Elevada (${pas}/${pad})`, class: "risk-high" }); }
+                    else if (pas >= 130 || pad >= 85) { score += 10; f.push({ text: `Presión Límite Alta (${pas}/${pad})`, class: "risk-mod" }); }
+
+                    // Lipidos
+                    if (ldl >= 160) { score += 20; f.push({ text: `LDL Muy Alto (${ldl})`, class: "risk-high" }); }
+                    else if (ldl >= 130) { score += 10; f.push({ text: `LDL Límite (${ldl})`, class: "risk-mod" }); }
+                    
+                    if (m.tg_hdl >= 3.5) { score += 15; f.push({ text: `Índice TG/HDL Elevado (${m.tg_hdl})`, class: "risk-high" }); }
+                    else if (tg >= 200) { score += 5; f.push({ text: `Triglicéridos Altos (${tg})`, class: "risk-mod" }); }
+
+                    // Antropo
+                    if (m.bmi >= 35) { score += 20; f.push({ text: `Obesidad Grado II+ (IMC ${m.bmi})`, class: "risk-high" }); }
+                    else if (m.bmi >= 30) { score += 15; f.push({ text: `Obesidad Grado I (IMC ${m.bmi})`, class: "risk-high" }); }
+                    else if (m.bmi >= 25) { score += 5; f.push({ text: `Sobrepeso (IMC ${m.bmi})`, class: "risk-mod" }); }
+                    
+                    if (m.icc_c.includes("Alto")) { score += 15; f.push({ text: `Obesidad Abdominal (ICC ${m.icc})`, class: "risk-high" }); }
+
+                    if (dynFactor) { score += dynScoreAdd; f.push(dynFactor); }
+
+                    // Estilo vida
+                    if (m.ipa >= 10 || d.smoker_status === 'active') { score += 20; f.push({ text: `Tabaquismo Activo`, class: "risk-high" }); }
+                    else if (d.smoker_passive === 'yes') { score += 5; f.push({ text: "Fumador Pasivo", class: "risk-mod" }); }
+
+                    if (s_days * s_dur < 150 && d.activity_intensity !== 'vigorous') { score += 10; f.push({ text: "Sedentarismo (<150min/sem)", class: "risk-mod" }); }
+                    
+                    if (d.alcohol_freq === 'daily' && d.alcohol_dose >= 2) { score += 10; f.push({ text: "Consumo Riesgoso de Alcohol", class: "risk-mod" }); }
+                    
+                    if (d.family_history === 'yes') { score += 10; f.push({ text: "Antecedentes Familiares de ECV/DM", class: "risk-mod" }); }
+                    
+                    if (m.fli >= 60) { score += 10; f.push({ text: "Probable Hígado Graso (MASLD)", class: "risk-high" }); }
+                }
+
+                let level, css;
+                if (age < 18) {
+                    level = "NO APLICABLE (<18 Años)"; css = "bg-slate-700";
+                    f.push({ text: "Evaluación diseñada solo para adultos.", class: "risk-mod" });
+                } else {
+                    if (score >= 100 || d.history_mi === 'yes') { level = "MUY ALTO RIESGO"; css = "risk-vhigh"; }
+                    else if (score >= 60) { level = "ALTO RIESGO"; css = "risk-high"; }
+                    else if (score >= 30) { level = "RIESGO MODERADO"; css = "risk-mod"; }
+                    else { level = "RIESGO BAJO"; css = "risk-low"; }
+                }
+
+                return {
+                    metrics: m,
+                    bp: avgBP,
+                    riskProfile: { score, level, css_class: css, factors: f, gripText }
+                };
+            };
+
+
+            // ==========================================
+            // RENDER VISTAS (Inputs)
+            // ==========================================
+            const rInput = (lbl, name, type="number", ph="") => (
+                <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{lbl}</label>
+                    <input type={type} name={name} value={data[name]} onChange={handleChange} placeholder={ph} className="med-input text-sm" />
+                </div>
+            );
+
+            const rSelect = (lbl, name, opts) => (
+                <div className="flex flex-col">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{lbl}</label>
+                    <select name={name} value={data[name]} onChange={handleChange} className="med-select">
+                        {opts.map(o => <option key={o.v} value={o.v}>{o.l}</option>)}
+                    </select>
+                </div>
+            );
+
+            const Station1 = () => (
+                <div className="h-[400px] overflow-y-auto pr-2 space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="col-span-2">
+                            {rInput("Nombre Completo (Opcional)", "full_name", "text", "Ej. Juan Pérez")}
+                        </div>
+                        {rInput("Edad", "age")}
+                        {rSelect("Sexo Biológico", "gender", [{v:'male',l:'Masculino'}, {v:'female',l:'Femenino'}])}
+                        {rInput("Estatura (cm)", "height_cm", "number", "170")}
+                        {rInput("Peso (kg)", "weight", "number", "75")}
+                        {rInput("Cintura (cm)", "waist")}
+                        {rInput("Cadera (cm)", "hip")}
+                    </div>
+                    
+                    <div className="p-4 border border-slate-700 bg-slate-800/30 rounded-xl">
+                        <h4 className="text-blue-400 font-bold mb-3 text-sm flex items-center gap-2"><span>⚡</span> Datos de Bioimpedancia (BIA) - Opcional</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                            {rInput("% Grasa", "bia_fat_p")}
+                            {rInput("% Músculo", "bia_muscle_p")}
+                            {rInput("% Visceral", "bia_visceral_p")}
+                            {rInput("Edad Metabólica", "bia_metabolic_age")}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const Station2 = () => (
+                <div className="h-[400px] overflow-y-auto pr-2 space-y-6">
+                    <div className="p-4 border border-blue-500/30 rounded-xl bg-blue-900/20">
+                        <div className="text-center text-blue-400 font-bold border-b border-blue-500/30 pb-2 mb-4 text-sm">PRESIÓN ARTERIAL (Promediaremos las tomas)</div>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div className="col-span-2 text-xs text-slate-400 font-bold uppercase text-center">Toma Principal (Obligatoria)</div>
+                            {rInput("Sistólica", "pas", "number", "120")}
+                            {rInput("Diastólica", "pad", "number", "80")}
+                        </div>
+                        <div className="grid grid-cols-2 gap-4 border-t border-slate-700 pt-4">
+                            <div className="col-span-2 text-xs text-slate-400 font-bold uppercase text-center">Tomas Extra (Opcionales)</div>
+                            {rInput("Día 2 Sist.", "pa_d2_s")}
+                            {rInput("Día 2 Diast.", "pa_d2_d")}
+                            {rInput("Día 3 Sist.", "pa_d3_s")}
+                            {rInput("Día 3 Diast.", "pa_d3_d")}
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        {rInput("Frec. Cardíaca (lpm)", "hr")}
+                        {rInput("Frec. Resp. (rpm)", "rr")}
+                        {rInput("Agarre Der. (kg)", "grip_right")}
+                        {rInput("Agarre Izq. (kg)", "grip_left")}
+                    </div>
+                </div>
+            );
+
+            const Station3 = () => (
+                <div className="h-[400px] overflow-y-auto pr-2 grid grid-cols-2 gap-4">
+                    {rInput("Glucosa (mg/dL)", "glucose")}
+                    {rInput("HbA1c (%) Opcional", "hba1c")}
+                    {rInput("Colesterol Total", "total_chol")}
+                    {rInput("Triglicéridos", "triglycerides")}
+                    {rInput("Colesterol HDL", "hdl")}
+                    {rInput("Colesterol LDL", "ldl")}
+                </div>
+            );
+
+            const Station4 = () => (
+                <div className="h-[400px] overflow-y-auto pr-2 space-y-4">
+                    <div className="p-4 border border-slate-700 bg-slate-800/20 rounded-xl">
+                        <h4 className="text-blue-400 font-bold mb-3 text-sm">Actividad Física</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                            {rSelect("Días/Sem", "activity_days", [{v:0,l:'0'},{v:2,l:'1-2'},{v:3.5,l:'3-4'},{v:5,l:'5+'}])}
+                            {rInput("Min/Día", "activity_duration")}
+                            <div className="col-span-2">
+                                {rSelect("Intensidad", "activity_intensity", [{v:'light',l:'Ligera'},{v:'moderate',l:'Moderada'},{v:'vigorous',l:'Vigorosa'}])}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="p-4 border border-slate-700 bg-slate-800/20 rounded-xl">
+                        <h4 className="text-blue-400 font-bold mb-3 text-sm">Tabaquismo y Alcohol</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                            {rSelect("Tabaquismo", "smoker_status", [{v:'never',l:'Nunca'},{v:'ex_smoker',l:'Ex-fumador'},{v:'active',l:'Activo'}])}
+                            {rSelect("Fumador Pasivo", "smoker_passive", [{v:'no',l:'No'},{v:'yes',l:'Sí'}])}
+                            {data.smoker_status === 'active' && rInput("Cigarros/día", "smoker_daily_avg")}
+                            {data.smoker_status === 'active' && rInput("Años fumando", "smoker_years")}
+                            
+                            {rSelect("Frec. Alcohol", "alcohol_freq", [{v:'none',l:'Nunca'},{v:'monthly',l:'Mensual'},{v:'weekly',l:'Semanal'},{v:'daily',l:'Diario'}])}
+                            {data.alcohol_freq !== 'none' && rInput("Dosis (Vasos/día)", "alcohol_dose")}
+                        </div>
+                    </div>
+                    <div className="p-4 border border-slate-700 bg-slate-800/20 rounded-xl">
+                        <h4 className="text-blue-400 font-bold mb-3 text-sm">Antecedentes Médicos</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                            {rSelect("Diabetes Dx", "dm_status", [{v:'no',l:'No'},{v:'yes',l:'Sí'}])}
+                            {rSelect("Meds Diabetes", "med_dm", [{v:'no',l:'No'},{v:'yes_rare',l:'A veces'},{v:'yes_freq',l:'Frecuente'}])}
+                            
+                            {rSelect("Hipertensión Dx", "hta_status", [{v:'no',l:'No'},{v:'yes',l:'Sí'}])}
+                            {rSelect("Meds Hipertensión", "med_hta", [{v:'no',l:'No'},{v:'yes_rare',l:'A veces'},{v:'yes_freq',l:'Frecuente'}])}
+                            
+                            {rSelect("Colesterol/TG Dx", "dlp_status", [{v:'no',l:'No'},{v:'yes',l:'Sí'}])}
+                            {rSelect("Meds (Estatinas)", "med_dlp", [{v:'no',l:'No'},{v:'yes_freq',l:'Sí'}])}
+
+                            {rSelect("Infarto Previo", "history_mi", [{v:'no',l:'No'},{v:'yes',l:'Sí'}])}
+                            {rSelect("Angina de Pecho", "history_angina", [{v:'no',l:'No'},{v:'yes',l:'Sí'}])}
+                            <div className="col-span-2">
+                                {rSelect("Antecedentes Familiares ECV/DM", "family_history", [{v:'no',l:'No'},{v:'yes',l:'Sí'}])}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // ==========================================
+            // MODAL TESIS INFOMATION
+            // ==========================================
+            const ThesisModal = () => (
+                <div className="absolute inset-0 bg-slate-900/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowThesisInfo(false)}>
+                    <div className="bg-slate-100 p-8 rounded-3xl shadow-2xl w-full max-w-3xl text-slate-800 border-4 border-slate-300 relative" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setShowThesisInfo(false)} className="absolute top-4 right-4 text-slate-500 hover:text-red-500 font-bold text-3xl transition-colors">&times;</button>
+                        
+                        <div className="flex justify-around items-center mb-6 border-b-2 border-slate-300 pb-4">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/f/f8/Logo_Instituto_Polit%C3%A9cnico_Nacional.png" alt="IPN" className="h-20 object-contain drop-shadow-md" onError={(e)=>{e.target.style.display='none'}} />
+                            <div className="text-center font-bold text-[#b91c1c] uppercase tracking-widest px-4">
+                                Universidad Abierta y a Distancia de México<br/>
+                                División de Ciencias de la Salud Biológicas y Ambientales<br/>
+                                Ingeniería en Biotecnología
+                            </div>
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/2/22/Logo_UnADM.png" alt="UnADM" className="h-16 object-contain drop-shadow-md" onError={(e)=>{e.target.style.display='none'}} />
+                        </div>
+                        
+                        <div className="bg-white p-6 rounded-2xl shadow-inner mb-6 text-center border border-slate-200">
+                            <p className="font-bold text-slate-800 italic text-sm md:text-base">
+                                "Evaluación del efecto potencial del flavanol (-)-epicatequina en la repolarización de macrófagos humanos de fenotipo proinflamatorio a fenotipo antiinflamatorio."
+                            </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm mb-6">
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 shadow-sm">
+                                <p className="text-slate-500 font-bold uppercase tracking-wider mb-2 text-xs">Presenta:</p>
+                                <p className="font-black text-[#005682] text-xl">Edsel Yahvi Méndez Hernández</p>
+                                <p className="font-bold text-slate-500 mt-1">Matrícula: ES181001269</p>
+                            </div>
+                            <div className="bg-red-50 p-4 rounded-xl border border-red-200 shadow-sm">
+                                <p className="text-slate-500 font-bold uppercase tracking-wider mb-2 text-xs">Asesores:</p>
+                                <p className="font-bold text-slate-800">Dra. Rocío del Pilar Rueda Zozaya <span className="font-normal text-slate-500">(Interno)</span></p>
+                                <p className="font-bold text-slate-800 mt-1">Dra. Nayelli Nájera García <span className="font-normal text-slate-500">(Externo)</span></p>
+                                <p className="font-bold text-slate-800 mt-1">Yuridia Martínez Meza <span className="font-normal text-slate-500">(Segundo Externo)</span></p>
+                            </div>
+                        </div>
+
+                        <div className="text-center font-bold text-slate-500 text-xs uppercase tracking-widest border-t border-slate-300 pt-4">
+                            Laboratorio de Investigación Cardiometabólica (LICAM)<br/>
+                            Escuela Superior de Medicina IPN. CDMX, 2026.
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // ==========================================
+            // LAYOUT PRINCIPAL
+            // ==========================================
+            return (
+                <div className="flex h-screen w-full">
+                    {showThesisInfo && <ThesisModal />}
+
+                    {/* PANALLA IZQUIERDA: EL ENTORNO CLÍNICO Y EL ASISTENTE */}
+                    <div className="w-[35%] bg-[#0f172a] border-r border-[#1e293b] relative flex flex-col items-center justify-center p-8 shadow-2xl overflow-hidden">
+                        {step === 5 && <div className="scanner-line"></div>}
+
+                        {/* Botón Info de Tesis (Prominente) */}
+                        <div className="absolute top-6 left-6 z-50">
+                            <button onClick={() => {setShowThesisInfo(true); AudioEngine.playClick();}} className="bg-white/10 hover:bg-white/20 text-blue-300 border border-blue-500/50 px-4 py-2 rounded-full font-bold text-xs flex items-center gap-2 transition-all backdrop-blur">
+                                <span>📚</span> Ver Info de Tesis
+                            </button>
+                        </div>
+
+                        {/* Título Principal y Logos */}
+                        <div className="absolute top-20 flex flex-col items-center">
+                            <h1 className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300 drop-shadow-[0_0_10px_rgba(56,189,248,0.8)]">LICAM</h1>
+                            <div className="text-[10px] font-bold text-slate-400 tracking-[0.2em] mb-4">CardioEval System v2.0</div>
+                        </div>
+
+                        {/* Asistente (Dr. Metric) */}
+                        <div className="mt-20">
+                            <SVGRobotFriendly emotion={doctorEmotion} />
+                        </div>
+
+                        {/* Globo de diálogo interactivo */}
+                        <div className="mt-8 bg-slate-800 border-2 border-slate-600 p-5 rounded-2xl text-sm text-slate-200 text-center shadow-xl relative min-h-[100px] flex items-center justify-center w-full max-w-xs transition-colors duration-300"
+                             style={{ borderColor: doctorEmotion === 'success' ? '#10b981' : doctorEmotion === 'warning' ? '#f59e0b' : '#475569' }}>
+                            <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[12px] border-l-transparent border-b-[14px] border-r-[12px] border-r-transparent" 
+                                 style={{ borderBottomColor: doctorEmotion === 'success' ? '#10b981' : doctorEmotion === 'warning' ? '#f59e0b' : '#475569' }}></div>
+                            <p className="font-medium leading-relaxed">{doctorMsg}</p>
+                        </div>
+                    </div>
+
+                    {/* PANTALLA DERECHA: LA TERMINAL DE DATOS */}
+                    <div className="w-[65%] bg-slate-900 med-bg-grid flex flex-col relative">
+                        
+                        {/* Header de Progreso */}
+                        <div className="h-20 bg-slate-950 border-b border-slate-800 flex items-center justify-between px-10 shadow-md z-10">
+                            <div className="flex gap-3">
+                                {[1,2,3,4].map(s => (
+                                    <div key={s} className={`w-10 h-3 rounded-full transition-all duration-500 ${step >= s ? 'bg-blue-500 shadow-[0_0_12px_#3b82f6]' : 'bg-slate-700'}`}></div>
+                                ))}
+                            </div>
+                            <div className="font-tech text-blue-400 text-xl tracking-widest font-bold flex items-center gap-4">
+                                {step === 0 ? "INICIO" : step === 1 ? "ESTACIÓN 1: ANTROPOMETRÍA" : step === 2 ? "ESTACIÓN 2: SIGNOS VITALES" : step === 3 ? "ESTACIÓN 3: LABORATORIO" : step === 4 ? "ESTACIÓN 4: ESTILO DE VIDA" : step === 5 ? "PROCESANDO..." : "REPORTE FINAL"}
+                                {isSaving && <span className="text-xs text-white bg-green-600 px-2 py-1 rounded animate-pulse">☁️ Guardando...</span>}
+                            </div>
+                        </div>
+
+                        {/* Contenedor Interactivo */}
+                        <div className="flex-1 p-10 flex flex-col justify-center max-w-3xl mx-auto w-full">
+                            
+                            {step === 0 && (
+                                <div className="text-center animate-fade-in-up">
+                                    <h2 className="text-4xl md:text-5xl font-black text-white mb-6">Calculadora de Riesgo<br/>Cardiometabólico</h2>
+                                    <p className="text-slate-400 mb-12 text-lg max-w-xl mx-auto leading-relaxed">
+                                        Herramienta avanzada para la evaluación del riesgo cardiometabólico. Ingresa los datos solicitados en cada estación.
+                                    </p>
+                                    <button onClick={nextStep} className="px-12 py-5 bg-blue-600 hover:bg-blue-500 text-white font-black text-xl rounded-2xl shadow-[0_0_25px_rgba(37,99,235,0.6)] transition-all transform hover:scale-105 border border-blue-400">
+                                        INICIAR EVALUACIÓN
+                                    </button>
+                                </div>
+                            )}
+
+                            {step === 1 && Station1()}
+                            {step === 2 && Station2()}
+                            {step === 3 && Station3()}
+                            {step === 4 && Station4()}
+                            {step === 5 && (
+                                <div className="flex flex-col items-center justify-center h-[400px]">
+                                    <div className="text-7xl anim-heartbeat mb-10 drop-shadow-[0_0_20px_rgba(239,68,68,0.8)]">❤️</div>
+                                    <h2 className="text-2xl font-tech text-blue-400 mb-4 animate-pulse">EVALUANDO BIOMARCADORES...</h2>
+                                    <div className="w-full h-3 bg-slate-800 rounded-full overflow-hidden mt-4 shadow-inner">
+                                        <div className="h-full bg-blue-500 w-full animate-[pulse_0.8s_infinite]"></div>
+                                    </div>
+                                </div>
+                            )}
+                            
+                            {step === 6 && results && (
+                                <div className="animate-fade-in h-[500px] overflow-y-auto pr-4 pb-10">
+                                    {/* Score Card */}
+                                    <div className={`p-8 rounded-3xl mb-6 text-center text-white ${results.riskProfile.css_class}`}>
+                                        <h2 className="text-sm font-black uppercase tracking-widest opacity-80 mb-2">Riesgo Global Estimado</h2>
+                                        <div className="text-5xl font-black mb-2">{results.riskProfile.level}</div>
+                                        <div className="font-tech text-2xl opacity-90 font-bold bg-black/20 py-2 rounded-xl inline-block px-6">SCORE: {results.riskProfile.score} Puntos</div>
+                                    </div>
+
+                                    {/* Mini Dashboards */}
+                                    <div className="grid grid-cols-2 gap-4 mb-6">
+                                        <div className="card-glass p-5 rounded-2xl">
+                                            <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Índice TG/HDL</div>
+                                            <div className="text-3xl font-tech text-white mb-1">{results.metrics.tg_hdl || 0}</div>
+                                            <div className={`text-xs font-bold ${results.metrics.tg_hdl_c.includes('Alto')?'text-red-400':'text-green-400'}`}>{results.metrics.tg_hdl_c}</div>
+                                        </div>
+                                        <div className="card-glass p-5 rounded-2xl">
+                                            <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Índice Masa Corporal</div>
+                                            <div className="text-3xl font-tech text-white mb-1">{results.metrics.bmi || 0}</div>
+                                            <div className={`text-xs font-bold ${results.metrics.bmi_c.includes('Obesi')?'text-red-400':results.metrics.bmi_c==='Sobrepeso'?'text-yellow-400':'text-green-400'}`}>{results.metrics.bmi_c}</div>
+                                        </div>
+                                        <div className="card-glass p-5 rounded-2xl">
+                                            <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Fuerza de Agarre</div>
+                                            <div className={`text-sm font-bold mt-2 ${results.riskProfile.gripText.includes('Baja')?'text-red-400':'text-green-400'}`}>{results.riskProfile.gripText}</div>
+                                        </div>
+                                        <div className="card-glass p-5 rounded-2xl">
+                                            <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Presión Arterial (Media)</div>
+                                            <div className="text-3xl font-tech text-white mb-1">{results.bp.s}/{results.bp.d}</div>
+                                            <div className="text-[9px] font-bold text-slate-400">{results.bp.source}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Factores */}
+                                    <h3 className="text-xl font-black text-blue-400 mb-4 border-b-2 border-slate-700 pb-2">Factores Clínicos Detectados</h3>
+                                    <div className="space-y-3 mb-8">
+                                        {results.riskProfile.factors.length === 0 ? (
+                                            <div className="text-green-400 font-bold p-4 bg-green-900/20 rounded-xl border border-green-800">✅ Ningún factor de riesgo mayor detectado.</div>
+                                        ) : (
+                                            results.riskProfile.factors.map((f, i) => (
+                                                <div key={i} className={`p-4 rounded-xl border-l-4 font-bold text-sm shadow-sm
+                                                    ${f.class==='risk-high'?'bg-red-900/20 border-red-500 text-red-300':
+                                                      f.class==='risk-mod'?'bg-yellow-900/20 border-yellow-500 text-yellow-300':
+                                                      'bg-green-900/20 border-green-500 text-green-300'}`}>
+                                                    ⚠ {f.text}
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+
+                                    <button onClick={() => {setStep(0); setResults(null); setData(data); AudioEngine.playClick();}} className="w-full py-5 bg-slate-700 hover:bg-slate-600 text-white font-black text-lg rounded-2xl transition-all shadow-lg border border-slate-500">
+                                        ↻ Nueva Evaluación (Reiniciar)
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Botones de Navegación */}
+                        {step > 0 && step < 5 && (
+                            <div className="h-24 bg-slate-950 border-t border-slate-800 flex items-center justify-between px-10 z-10">
+                                <button onClick={prevStep} className="px-8 py-4 border-2 border-slate-600 text-slate-400 hover:bg-slate-800 hover:text-white rounded-xl font-bold transition-all text-sm uppercase tracking-wider">
+                                    ← Volver
+                                </button>
+                                <button onClick={nextStep} className="px-10 py-4 bg-blue-600 hover:bg-blue-500 text-white font-black rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.4)] transition-transform hover:scale-105 uppercase tracking-wider">
+                                    {step === 4 ? "INICIAR ANÁLISIS" : "Siguiente Estación →"}
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<CardioGame />);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador de Micropipeteo - Niveles Pro</title>
+    
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'metric-green': '#2ecc71',
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 3s infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Open Sans', sans-serif; user-select: none; }
+        
+        .lab-bg-grid {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
+        }
+        
+        .bg-notebook-header { background-color: #005682; }
+        .bg-notebook-sub { background-color: #003b57; }
+        
+        .pipette-lcd { font-family: 'Courier New', Courier, monospace; letter-spacing: 1px; font-weight: bold;}
+        
+        .svg-drop-shadow { filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.2)); }
+        .svg-hover-glow:hover { filter: drop-shadow(0px 0px 10px rgba(59,130,246,0.6)); cursor: pointer; transform: translateY(-2px); transition: all 0.2s;}
+        
+        .tooltip {
+            visibility: hidden;
+            background-color: rgba(15, 23, 42, 0.9);
+            color: white;
+            text-align: center;
+            border-radius: 6px;
+            padding: 6px 10px;
+            position: absolute;
+            z-index: 50;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%; left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(15, 23, 42, 0.9) transparent transparent transparent;
+        }
+        .has-tooltip:hover .tooltip { visibility: visible; }
+
+        @keyframes slideDownTip {
+            0% { transform: translateY(-10px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        .animate-tip { animation: slideDownTip 0.2s ease-out forwards; }
+
+        /* Animación para Dr. Metric Flotando */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .anim-float { animation: float 3s ease-in-out infinite; }
+
+        /* Dr. Metric HUD posicionado a la izquierda, libre de interrupciones */
+        .dr-metric-hud {
+            position: absolute;
+            bottom: 260px; /* <-- Movido hacia abajo para no tapar las cajas de puntas */
+            left: 40px;    /* <-- Movido a la izquierda */
+            z-index: 100;
+            display: flex;
+            align-items: flex-start;
+            pointer-events: none;
+        }
+        .dr-metric-avatar {
+            width: 80px;
+            height: 80px;
+            background-color: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 10px;
+            z-index: 10;
+        }
+        .dr-metric-bubble {
+            background-color: #fff;
+            padding: 15px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            max-width: 280px;
+            position: relative;
+            font-size: 13px;
+            color: #333;
+            border: 2px solid #2ecc71;
+            transition: border-color 0.3s ease;
+        }
+        .dr-metric-bubble::after {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: -10px;
+            border-width: 10px 10px 10px 0;
+            border-style: solid;
+            border-color: transparent #fff transparent transparent;
+            display: block;
+            width: 0;
+            z-index: 1;
+        }
+        .dr-metric-bubble::before {
+            content: '';
+            position: absolute;
+            top: 23px;
+            left: -13px;
+            border-width: 12px 12px 12px 0;
+            border-style: solid;
+            border-color: transparent inherit transparent transparent;
+            display: block;
+            width: 0;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 overflow-hidden selection:bg-blue-300">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- MOTOR DE SONIDO (Web Audio API) ---
+        const AudioEngine = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            playTone(freq, type, duration, vol=0.1) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            playClick() { this.init(); this.playTone(1200, 'square', 0.05, 0.02); },
+            playPlastic() { this.init(); this.playTone(400, 'triangle', 0.1, 0.05); },
+            playGlass() { this.init(); this.playTone(2000, 'sine', 0.1, 0.05); setTimeout(() => this.playTone(2800, 'sine', 0.15, 0.02), 40); },
+            playPour() {
+                this.init();
+                const bufferSize = this.ctx.sampleRate * 0.4; 
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
+                filter.frequency.linearRampToValueAtTime(200, this.ctx.currentTime + 0.4);
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+                noise.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                noise.start();
+            },
+            playError() {
+                this.init();
+                this.playTone(150, 'sawtooth', 0.3, 0.05);
+                setTimeout(() => this.playTone(140, 'sawtooth', 0.4, 0.05), 150);
+            },
+            playSuccess() {
+                this.init();
+                this.playTone(523.25, 'sine', 0.1, 0.05); 
+                setTimeout(() => this.playTone(659.25, 'sine', 0.1, 0.05), 100); 
+                setTimeout(() => this.playTone(783.99, 'sine', 0.3, 0.05), 200); 
+            },
+            playBeep() {
+                this.init();
+                this.playTone(1500, 'sine', 0.1, 0.05);
+            }
+        };
+
+        const PIPETTES = {
+            'P2': { color: '#e74c3c', tipColor: '#ffffff', min: 0.1, max: 2.0, step: 0.1 },
+            'P20': { color: '#f1c40f', tipColor: '#fef9e7', min: 0.5, max: 20.0, step: 0.5 },
+            'P200': { color: '#2ecc71', tipColor: '#e8f8f5', min: 20.0, max: 200.0, step: 1.0 },
+            'P1000': { color: '#3498db', tipColor: '#ebf5fb', min: 100.0, max: 1000.0, step: 10.0 }
+        };
+
+        // --- BASE DE DATOS DE EJERCICIOS ---
+        const EXERCISE_DATA = [
+            {
+                id: 0,
+                title: "1. Familiarización Básica",
+                desc: "Transfiere 20 µL de Tinte Rojo al círculo A del papel secante.",
+                hasPaper: true,
+                containers: [
+                    { id: 'c_rojo', type: 'tube', label: 'Tinte Rojo', color: '#ef4444', isSource: true }
+                ],
+                steps: [
+                    { id: 'e0_1', text: 'Selecciona la pipeta P20.' },
+                    { id: 'e0_2', text: 'Ajusta el volumen a 20.0 µL.' },
+                    { id: 'e0_3', text: 'Coloca una punta P20.' },
+                    { id: 'e0_4', text: 'Aspira 20 µL de Tinte Rojo.' },
+                    { id: 'e0_5', text: 'Dispensa en el círculo A.' },
+                    { id: 'e0_6', text: 'Expulsa la punta en el contenedor RPBI.' }
+                ]
+            },
+            {
+                id: 1,
+                title: "2. Conversión: mL a µL",
+                desc: "Transfiere 0.5 mL de Tinte Azul al Tubo de Mezcla. (Recuerda: 1 mL = 1000 µL).",
+                hasPaper: false,
+                containers: [
+                    { id: 'c_azul', type: 'tube', label: 'Azul (0.5 mL)', color: '#3b82f6', isSource: true },
+                    { id: 'c_mezcla1', type: 'tube', label: 'Tubo de Mezcla', color: 'transparent', isSource: false }
+                ],
+                steps: [
+                    { id: 'e1_1', text: 'Identifica y selecciona la pipeta P1000.' },
+                    { id: 'e1_2', text: 'Ajusta el volumen a 500 µL.' },
+                    { id: 'e1_3', text: 'Coloca una punta P1000.' },
+                    { id: 'e1_4', text: 'Aspira 500 µL de Tinte Azul.' },
+                    { id: 'e1_5', text: 'Dispensa en el Tubo de Mezcla.' },
+                    { id: 'e1_6', text: 'Expulsa la punta en el contenedor RPBI.' }
+                ]
+            },
+            {
+                id: 2,
+                title: "3. Master Mix (Volúmenes Combinados)",
+                desc: "Prepara una mezcla con 200 µL de Buffer y 2 µL de ADN en el Tubo Final.",
+                hasPaper: false,
+                containers: [
+                    { id: 'c_buffer', type: 'tube', label: 'Buffer Verde', color: '#22c55e', isSource: true },
+                    { id: 'c_dna', type: 'tube', label: 'ADN (Molde)', color: '#f8fafc', isSource: true },
+                    { id: 'c_final', type: 'tube', label: 'Tubo Final', color: 'transparent', isSource: false }
+                ],
+                steps: [
+                    { id: 'e2_1', text: 'Aspira 200 µL de Buffer Verde (P200 o P1000).' },
+                    { id: 'e2_2', text: 'Dispensa Buffer en el Tubo Final.' },
+                    { id: 'e2_3', text: 'Desecha la punta para no contaminar.' },
+                    { id: 'e2_4', text: 'Aspira 2 µL de ADN (Pipeta P2 o P20).' },
+                    { id: 'e2_5', text: 'Dispensa ADN en el Tubo Final.' },
+                    { id: 'e2_6', text: 'Expulsa la punta en el contenedor RPBI.' }
+                ]
+            },
+            {
+                id: 3,
+                title: "4. Dilución y Stock",
+                desc: "Haz una dilución (Volumen Final 1mL): Transfiere 900 µL de Solvente y 100 µL de Soluto Concentrado al Tubo Dilución.",
+                hasPaper: false,
+                containers: [
+                    { id: 'c_agua', type: 'tube', label: 'Solvente (H2O)', color: '#bae6fd', isSource: true },
+                    { id: 'c_stock', type: 'tube', label: 'Stock (10X)', color: '#7f1d1d', isSource: true },
+                    { id: 'c_dilucion', type: 'tube', label: 'Tubo Dilución', color: 'transparent', isSource: false }
+                ],
+                steps: [
+                    { id: 'e3_1', text: 'Aspira 900 µL de Solvente (P1000).' },
+                    { id: 'e3_2', text: 'Dispensa Solvente en el Tubo Dilución.' },
+                    { id: 'e3_3', text: 'Desecha la punta usada.' },
+                    { id: 'e3_4', text: 'Aspira 100 µL de Stock Rojo (P200 o P1000).' },
+                    { id: 'e3_5', text: 'Dispensa Soluto en el Tubo Dilución.' },
+                    { id: 'e3_6', text: 'Expulsa la punta en el contenedor RPBI.' }
+                ]
+            }
+        ];
+
+        // --- COMPONENTE AVATAR DR. METRIC ---
+        const SVGRobotFriendly = ({ emotion }) => {
+            // Emociones: 'normal', 'thinking', 'success', 'warning'
+            let color = "#38bdf8"; 
+            let mouth = "M 40 65 Q 50 75 60 65"; 
+            let eyeM = "circle";
+
+            if (emotion === 'success') {
+                color = "#34d399"; 
+                mouth = "M 35 60 Q 50 80 65 60"; 
+                eyeM = "happy";
+            } else if (emotion === 'warning') {
+                color = "#fbbf24"; 
+                mouth = "M 45 70 Q 50 68 55 70"; 
+                eyeM = "worried"; 
+            } else if (emotion === 'thinking') {
+                color = "#a78bfa"; 
+                mouth = "M 40 70 L 60 70"; 
+                eyeM = "circle";
+            }
+
+            return (
+                <svg viewBox="0 0 100 100" className={`w-full h-full ${emotion === 'thinking' ? 'animate-pulse' : 'anim-float'}`}>
+                    <defs>
+                        <linearGradient id="screenGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#1e293b" />
+                            <stop offset="100%" stopColor="#0f172a" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M 50 25 L 50 10" stroke={color} strokeWidth="3" strokeLinecap="round" />
+                    <circle cx="50" cy="8" r="5" fill={emotion === 'warning' ? '#f59e0b' : color} className="animate-pulse" />
+                    <rect x="15" y="25" width="70" height="60" rx="15" fill="#0f172a" stroke={color} strokeWidth="4" />
+                    <rect x="25" y="35" width="50" height="40" rx="8" fill="url(#screenGrad)" stroke="#334155" strokeWidth="2" />
+                    
+                    {eyeM === 'happy' ? (
+                        <g fill="none" stroke={color} strokeWidth="4" strokeLinecap="round">
+                            <path d="M 32 48 Q 37 40 42 48" />
+                            <path d="M 58 48 Q 63 40 68 48" />
+                        </g>
+                    ) : eyeM === 'worried' ? (
+                        <g fill="none" stroke={color} strokeWidth="4" strokeLinecap="round">
+                            <path d="M 32 46 Q 37 42 42 45" />
+                            <path d="M 58 45 Q 63 42 68 46" />
+                        </g>
+                    ) : (
+                        <g fill={color}>
+                            <circle cx="37" cy="48" r="5" className={emotion === 'thinking' ? 'animate-ping' : ''} />
+                            <circle cx="63" cy="48" r="5" className={emotion === 'thinking' ? 'animate-ping' : ''} />
+                        </g>
+                    )}
+                    <path d={mouth} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" className="transition-all duration-300" />
+                </svg>
+            );
+        };
+
+        function MicropipetteSimulator() {
+            // Inicializar Audio al hacer clic en la pantalla
+            useEffect(() => {
+                const initAudio = () => AudioEngine.init();
+                window.addEventListener('click', initAudio, {once:true});
+                return () => window.removeEventListener('click', initAudio);
+            }, []);
+
+            // --- ESTADOS NUCLEARES ---
+            const [currentExerciseIdx, setCurrentExerciseIdx] = useState(0);
+            const [completedSteps, setCompletedSteps] = useState([]);
+            
+            // --- ESTADOS DE HERRAMIENTAS ---
+            const [activePipette, setActivePipette] = useState(null); 
+            const [volumes, setVolumes] = useState({ P2: 0, P20: 0, P200: 0, P1000: 0 });
+            const [boxesOpen, setBoxesOpen] = useState({ P2: false, P20: false, P200: false, P1000: false });
+            const [hasTip, setHasTip] = useState(null); 
+            const [tipUsed, setTipUsed] = useState(false); // Rastrea si la punta ya aspiró algo
+            
+            // --- ESTADOS DE LÍQUIDOS ---
+            const [liquidInTip, setLiquidInTip] = useState({ vol: 0, color: 'transparent', source: null });
+            const [targetState, setTargetState] = useState({}); // { c_mezcla1: { vol: 500, color: '#3b82f6' } }
+            const [paperSpots, setPaperSpots] = useState({ A: 0, B: 0, C: 0, D: 0 });
+            
+            // Modal de volumen y Tesis
+            const [showVolModal, setShowVolModal] = useState(false);
+            const [tempVol, setTempVol] = useState(0);
+            const [showThesisInfo, setShowThesisInfo] = useState(false);
+
+            // --- DR. METRIC & SISTEMA DE EVALUACIÓN ---
+            const [metricMessage, setMetricMessage] = useState("¡Hola! Soy el Dr. Metric. Seré tu asistente virtual. ¡Vamos a dominar el micropipeteo juntos!");
+            const [doctorEmotion, setDoctorEmotion] = useState('normal');
+            const [score, setScore] = useState(100);
+            const [penalties, setPenalties] = useState([]);
+            const metricTimeoutRef = useRef(null);
+
+            const showMetricMessage = (message, emotion = 'normal', duration = 5000) => {
+                if (metricTimeoutRef.current) clearTimeout(metricTimeoutRef.current);
+                setMetricMessage(message);
+                setDoctorEmotion(emotion);
+                if (duration > 0) {
+                    metricTimeoutRef.current = setTimeout(() => {
+                        setMetricMessage("¡Sigue así! Estoy observando tu técnica para asegurarme de que todo salga perfecto.");
+                        setDoctorEmotion('normal');
+                    }, duration);
+                }
+            };
+
+            const addPenalty = (points, reason, advice) => {
+                AudioEngine.playError();
+                setScore(prev => Math.max(0, prev - points));
+                setPenalties(prev => [...prev, { points, reason, advice }]);
+                showMetricMessage(`¡Atención! ${reason}. ${advice}`, 'warning', 8000);
+            };
+
+            // --- MOTOR DE EVALUACIÓN DE PASOS ---
+            useEffect(() => {
+                const ex = EXERCISE_DATA[currentExerciseIdx];
+                const done = new Set(completedSteps);
+                let newlyCompleted = [];
+                const markDone = (stepId) => { if (!done.has(stepId) && !newlyCompleted.includes(stepId)) newlyCompleted.push(stepId); };
+
+                // Evaluador Ejercicio 1
+                if (ex.id === 0) {
+                    if (activePipette === 'P20') markDone('e0_1');
+                    if (done.has('e0_1') && volumes['P20'] === 20) markDone('e0_2');
+                    if (done.has('e0_2') && hasTip === 'P20') markDone('e0_3');
+                    if (done.has('e0_3') && liquidInTip.vol === 20 && liquidInTip.source === 'c_rojo') markDone('e0_4');
+                    if (done.has('e0_4') && paperSpots.A >= 20) markDone('e0_5');
+                    if (done.has('e0_5') && !hasTip) markDone('e0_6');
+                } 
+                // Evaluador Ejercicio 2
+                else if (ex.id === 1) {
+                    if (activePipette === 'P1000') markDone('e1_1');
+                    if (done.has('e1_1') && volumes['P1000'] === 500) markDone('e1_2');
+                    if (done.has('e1_2') && hasTip === 'P1000') markDone('e1_3');
+                    if (done.has('e1_3') && liquidInTip.vol === 500 && liquidInTip.source === 'c_azul') markDone('e1_4');
+                    if (done.has('e1_4') && (targetState['c_mezcla1']?.vol || 0) >= 500) markDone('e1_5');
+                    if (done.has('e1_5') && !hasTip) markDone('e1_6');
+                }
+                // Evaluador Ejercicio 3
+                else if (ex.id === 2) {
+                    if (liquidInTip.vol === 200 && liquidInTip.source === 'c_buffer') markDone('e2_1');
+                    if (done.has('e2_1') && (targetState['c_final']?.vol || 0) >= 200) markDone('e2_2');
+                    if (done.has('e2_2') && !hasTip) markDone('e2_3');
+                    if (done.has('e2_3') && liquidInTip.vol === 2 && liquidInTip.source === 'c_dna') markDone('e2_4');
+                    if (done.has('e2_4') && (targetState['c_final']?.vol || 0) >= 202) markDone('e2_5');
+                    if (done.has('e2_5') && !hasTip) markDone('e2_6');
+                }
+                // Evaluador Ejercicio 4
+                else if (ex.id === 3) {
+                    if (liquidInTip.vol === 900 && liquidInTip.source === 'c_agua') markDone('e3_1');
+                    if (done.has('e3_1') && (targetState['c_dilucion']?.vol || 0) >= 900) markDone('e3_2');
+                    if (done.has('e3_2') && !hasTip) markDone('e3_3');
+                    if (done.has('e3_3') && liquidInTip.vol === 100 && liquidInTip.source === 'c_stock') markDone('e3_4');
+                    if (done.has('e3_4') && (targetState['c_dilucion']?.vol || 0) >= 1000) markDone('e3_5');
+                    if (done.has('e3_5') && !hasTip) markDone('e3_6');
+                }
+
+                if (newlyCompleted.length > 0) {
+                    setCompletedSteps(prev => {
+                        const newArray = [...prev, ...newlyCompleted];
+                        if (newArray.length === EXERCISE_DATA[currentExerciseIdx].steps.length) {
+                            AudioEngine.playSuccess(); // Sonido al ganar el nivel
+                            if (currentExerciseIdx === EXERCISE_DATA.length - 1) {
+                                showMetricMessage("¡Felicidades! Has completado todas las prácticas. Revisemos tu evaluación final.", "success", 0);
+                            } else {
+                                showMetricMessage("¡Excelente! Has completado este nivel correctamente.", "success", 4000);
+                            }
+                        } else {
+                            AudioEngine.playBeep(); // Sonido menor al avanzar un paso
+                        }
+                        return newArray;
+                    });
+                }
+            }, [activePipette, volumes, hasTip, liquidInTip, targetState, paperSpots, currentExerciseIdx, completedSteps]);
+
+
+            // --- MÉTODOS DE INTERACCIÓN ---
+
+            const loadExercise = (idx) => {
+                AudioEngine.init();
+                AudioEngine.playClick();
+                setCurrentExerciseIdx(idx);
+                setCompletedSteps([]);
+                setLiquidInTip({ vol: 0, color: 'transparent', source: null });
+                setTargetState({});
+                setPaperSpots({ A: 0, B: 0, C: 0, D: 0 });
+                setActivePipette(null);
+                setVolumes({ P2: 0, P20: 0, P200: 0, P1000: 0 });
+                setBoxesOpen({ P2: false, P20: false, P200: false, P1000: false });
+                setHasTip(null);
+                setTipUsed(false);
+                
+                if (idx === 0) {
+                    setScore(100);
+                    setPenalties([]);
+                    showMetricMessage("¡Empezamos desde cero! Recuerda mantener buenas prácticas de laboratorio.", "normal");
+                }
+            };
+
+            const handleSelectPipette = (type) => {
+                AudioEngine.init();
+                AudioEngine.playPlastic();
+                setActivePipette(type);
+                showMetricMessage(`Seleccionaste la pipeta ${type}. Asegúrate de ajustar el volumen.`, "normal", 3000);
+            };
+
+            const handleOpenVolModal = () => {
+                AudioEngine.init();
+                AudioEngine.playClick();
+                if (!activePipette) return;
+                setTempVol(volumes[activePipette] || PIPETTES[activePipette].min);
+                setShowVolModal(true);
+            };
+
+            const handleVolumeChange = (direction) => {
+                AudioEngine.init();
+                AudioEngine.playClick();
+                const p = PIPETTES[activePipette];
+                let current = parseFloat(tempVol);
+                if (isNaN(current)) current = p.min;
+                let nextVol = direction === 'up' ? current + p.step : current - p.step;
+                nextVol = Math.max(p.min, Math.min(p.max, nextVol));
+                setTempVol(nextVol.toFixed(1));
+            };
+
+            const handleSaveVolume = () => {
+                AudioEngine.init();
+                AudioEngine.playClick();
+                const p = PIPETTES[activePipette];
+                let v = parseFloat(tempVol);
+                if (isNaN(v) || v < p.min) v = p.min;
+                if (v > p.max) v = p.max;
+                setVolumes({ ...volumes, [activePipette]: v });
+                setShowVolModal(false);
+            };
+
+            const handleBoxClick = (type) => {
+                AudioEngine.init();
+                AudioEngine.playPlastic();
+                if (!boxesOpen[type]) {
+                    setBoxesOpen({ ...boxesOpen, [type]: true });
+                } else {
+                    if (activePipette === type && !hasTip) {
+                        setHasTip(type); 
+                        setTipUsed(false);
+                        showMetricMessage("Punta montada. No olvides tapar la caja para evitar contaminación.", "normal", 4000);
+                    } else {
+                        setBoxesOpen({ ...boxesOpen, [type]: false });
+                    }
+                }
+            };
+
+            // Helper para checar cajas abiertas
+            const checkBoxesOpen = () => {
+                const isOpen = Object.values(boxesOpen).some(val => val);
+                if (isOpen) {
+                    addPenalty(3, "Caja de puntas abierta", "Cierra las cajas inmediatamente después de usarlas para evitar que se contaminen con aerosoles o polvo del ambiente.");
+                    // Autocerrar para no spamear
+                    setBoxesOpen({ P2: false, P20: false, P200: false, P1000: false });
+                }
+            };
+
+            const handleTubeClick = (container) => {
+                AudioEngine.init();
+                if (!activePipette || !hasTip) { 
+                    addPenalty(5, "Aspirar sin punta", "Siempre coloca una punta estéril en la micropipeta antes de interactuar con líquidos.");
+                    return; 
+                }
+                if (hasTip !== activePipette) { 
+                    addPenalty(5, "Punta incorrecta", "Asegúrate de usar la punta correspondiente al modelo de tu pipeta.");
+                    return; 
+                }
+                
+                if (container.isSource) {
+                    // Acción: Aspirar
+                    checkBoxesOpen(); // Penalización si la caja está abierta
+                    
+                    if (tipUsed && liquidInTip.vol === 0) {
+                        addPenalty(10, "Contaminación Cruzada", "Intentaste aspirar con una punta que ya habías usado. ¡Siempre debes desecharla y tomar una nueva!");
+                        // Permitimos continuar pero ya se llevó la penalización dura
+                    }
+
+                    const vol = volumes[activePipette];
+                    if (vol <= 0) { 
+                        addPenalty(2, "Volumen no ajustado", "Debes configurar el volumen correcto en el display de la pipeta antes de intentar aspirar.");
+                        return; 
+                    }
+                    if (liquidInTip.vol > 0) { 
+                        addPenalty(5, "Punta llena", "La punta ya tiene líquido en su interior. Dispénsalo en el tubo correcto o deséchalo.");
+                        return; 
+                    }
+                    
+                    AudioEngine.playPour(); // Sonido de succión
+                    setLiquidInTip({ vol, color: container.color, source: container.id });
+                    setTipUsed(true); // Marca la punta como usada
+                } else {
+                    // Acción: Dispensar
+                    checkBoxesOpen(); // Penalización si la caja está abierta
+                    
+                    if (liquidInTip.vol === 0) { 
+                        addPenalty(2, "Dispensar al vacío", "La micropipeta está vacía. Aspira el reactivo necesario primero.");
+                        return; 
+                    }
+                    
+                    AudioEngine.playPour(); // Sonido de dispensación
+                    setTargetState(prev => {
+                        const existing = prev[container.id] || { vol: 0, color: 'transparent' };
+                        // Lógica visual simple para mezcla de colores: toma el último color añadido si el actual es transparente.
+                        const newColor = existing.color === 'transparent' ? liquidInTip.color : existing.color;
+                        return {
+                            ...prev,
+                            [container.id]: { vol: existing.vol + liquidInTip.vol, color: newColor }
+                        }
+                    });
+                    setLiquidInTip({ vol: 0, color: 'transparent', source: null });
+                }
+            };
+
+            const handlePaperClick = (spot) => {
+                AudioEngine.init();
+                checkBoxesOpen();
+
+                if (liquidInTip.vol > 0) {
+                    AudioEngine.playPour();
+                    setPaperSpots(prev => ({ ...prev, [spot]: prev[spot] + liquidInTip.vol }));
+                    setLiquidInTip({ vol: 0, color: 'transparent', source: null });
+                } else {
+                    showMetricMessage("La pipeta está vacía.", "warning", 2000);
+                }
+            };
+
+            const handleTrashClick = () => {
+                AudioEngine.init();
+                if (hasTip) {
+                    AudioEngine.playPlastic();
+                    setHasTip(null);
+                    setLiquidInTip({ vol: 0, color: 'transparent', source: null });
+                    setTipUsed(false);
+                    showMetricMessage("Punta desechada correctamente en el contenedor RPBI. ¡Excelente práctica!", "success", 4000);
+                }
+            };
+
+
+            // --- COMPONENTES GRÁFICOS (SVGs) ---
+
+            const SVGTipBox = ({ type, isOpen, onClick }) => {
+                const boxColor = PIPETTES[type].color;
+                return (
+                    <div className="relative has-tooltip flex flex-col items-center transition-transform hover:-translate-y-1" onClick={() => onClick(type)}>
+                        <span className="tooltip">Caja Puntas {type}</span>
+                        <div className="text-slate-600 bg-white/80 px-2 py-0.5 rounded shadow-sm text-[10px] font-bold mb-2 border border-slate-300">Puntas {type}</div>
+                        <svg width="60" height="50" viewBox="0 0 100 80" className="svg-hover-glow cursor-pointer">
+                            <path d="M10,40 L90,40 L85,80 L15,80 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="2" />
+                            {isOpen && (
+                                <g opacity="0.6">
+                                    {[20, 40, 60, 80].map(x => [45, 55, 65].map(y => <circle key={`${x}-${y}`} cx={x} cy={y} r="3" fill="#cbd5e1" />))}
+                                </g>
+                            )}
+                            <g transform={isOpen ? "translate(0, -30) rotate(-10)" : "translate(0, 0)"} className="transition-transform duration-300">
+                                <path d="M10,40 L90,40 L85,10 L15,10 Z" fill={boxColor} fillOpacity="0.5" stroke={boxColor} strokeWidth="3" />
+                                <rect x="40" y="5" width="20" height="5" fill="#f1f5f9" />
+                            </g>
+                        </svg>
+                    </div>
+                );
+            };
+
+            const SVGPipette = ({ type, isRack = false }) => {
+                const p = PIPETTES[type];
+                const isActive = activePipette === type;
+                
+                return (
+                    <div className={`relative flex flex-col items-center transition-all ${isRack ? 'has-tooltip svg-hover-glow' : ''} ${isRack && isActive ? 'opacity-20' : 'opacity-100'}`}
+                         onClick={isRack ? () => handleSelectPipette(type) : null}>
+                        
+                        {isRack && <span className="tooltip">Usar {type}</span>}
+                        {isRack && <div className="text-white text-[10px] font-bold mb-1 bg-slate-700 px-2 py-0.5 rounded shadow">{type}</div>}
+                        
+                        <svg width={isRack ? "25" : "40"} height={isRack ? "120" : "180"} viewBox="0 0 40 180" className={!isRack ? "svg-drop-shadow" : ""}>
+                            <rect x="16" y="0" width="8" height="20" fill="#f8fafc" stroke="#94a3b8" />
+                            <rect x="12" y="20" width="16" height="15" fill={p.color} />
+                            <path d="M10,35 L30,35 L34,90 L6,90 Z" fill="#ffffff" stroke="#94a3b8" strokeWidth="2" />
+                            
+                            {!isRack && (
+                                <g onClick={handleOpenVolModal} className="cursor-pointer hover:opacity-90">
+                                    <rect x="12" y="50" width="16" height="25" fill="#1e293b" rx="2" />
+                                    <text x="20" y="66" fill="#10b981" fontSize="10" textAnchor="middle" className="pipette-lcd">{volumes[type] || '0'}</text>
+                                </g>
+                            )}
+                            
+                            <rect x="6" y="30" width="4" height="25" fill="#cbd5e1" rx="2" />
+                            <polygon points="12,90 28,90 22,140 18,140" fill="#f1f5f9" stroke="#94a3b8" strokeWidth="2" />
+                            
+                            {(!isRack && hasTip === type) && (
+                                <g className="animate-tip">
+                                    <polygon points="17,140 23,140 21,175 19,175" fill={p.tipColor} stroke="#94a3b8" strokeWidth="1" />
+                                    {liquidInTip.vol > 0 && (
+                                        <polygon points="18,150 22,150 20.5,170 19.5,170" fill={liquidInTip.color} opacity="0.9" />
+                                    )}
+                                </g>
+                            )}
+                        </svg>
+                    </div>
+                );
+            };
+
+            const SVGEppendorf = ({ label, color, vol, onClick }) => {
+                const fillPct = Math.min(100, (vol / 1000) * 100);
+                const safeId = label.replace(/\s+/g,'-');
+                
+                return (
+                    <div className="flex flex-col items-center cursor-pointer has-tooltip svg-hover-glow transition-transform" onClick={onClick}>
+                        <span className="tooltip">{label} ({vol}µL)</span>
+                        <div className="text-slate-700 bg-white/90 px-2 py-0.5 rounded shadow-sm text-[9px] font-bold mb-2 max-w-[80px] text-center border border-slate-300 leading-tight">{label}</div>
+                        <svg width="45" height="90" viewBox="0 0 50 100" className="drop-shadow-md">
+                            <path d="M 0 15 Q 10 5 20 15 L 10 25 Z" fill="#cbd5e1" stroke="#64748b" strokeWidth="2" />
+                            <path d="M 15 20 L 35 20 L 35 70 Q 35 90 25 90 Q 15 90 15 70 Z" fill="rgba(255,255,255,0.6)" stroke="#64748b" strokeWidth="2" />
+                            <clipPath id={`tube-clip-${safeId}`}>
+                                <path d="M 16 21 L 34 21 L 34 70 Q 34 88 25 88 Q 16 88 16 70 Z" />
+                            </clipPath>
+                            <rect x="0" y={90 - (fillPct * 0.7)} width="50" height={fillPct * 0.7} fill={color} clipPath={`url(#tube-clip-${safeId})`} className="transition-all duration-500" />
+                            <path d="M 18 25 L 22 25 L 22 75 L 18 70 Z" fill="rgba(255,255,255,0.8)" />
+                        </svg>
+                    </div>
+                );
+            };
+
+            const SVGTrashBin = () => {
+                return (
+                    <div className="relative w-24 h-24 flex-shrink-0 flex flex-col items-center justify-end pb-2 has-tooltip svg-hover-glow" onClick={handleTrashClick}>
+                        <span className="tooltip bg-red-900 text-white">Expulsar Punta (RPBI)</span>
+                        <span className="text-red-100 bg-red-800 px-2 py-0.5 rounded shadow-sm text-[10px] font-bold mb-1 border border-red-900">RPBI</span>
+                        <svg width="60" height="50" viewBox="0 0 60 50">
+                            {/* Cuerpo del basurero RPBI */}
+                            <path d="M10,15 L50,15 L45,45 L15,45 Z" fill="#dc2626" stroke="#991b1b" strokeWidth="2" />
+                            <path d="M5,10 L55,10 L55,15 L5,15 Z" fill="#b91c1c" />
+                            {/* Señal de advertencia biológica simplificada */}
+                            <polygon points="30,22 22,38 38,38" fill="#facc15" />
+                            <path d="M30,26 L30,32 M30,35 L30,36" stroke="#000" strokeWidth="2" strokeLinecap="round" />
+                        </svg>
+                    </div>
+                );
+            };
+
+            // --- RENDERIZADO DEL PROTOCOLO (DERECHA) ---
+            const renderProtocolSteps = () => {
+                const ex = EXERCISE_DATA[currentExerciseIdx];
+                const totalSteps = ex.steps.length;
+                const doneCount = completedSteps.length;
+                const isComplete = doneCount === totalSteps;
+
+                // Verificamos si es el ÚLTIMO ejercicio Y está completo
+                const isVeryFinal = isComplete && currentExerciseIdx === EXERCISE_DATA.length - 1;
+
+                if (isVeryFinal) {
+                    return (
+                        <div className="p-6 overflow-y-auto flex-1 flex flex-col animate-fade-in">
+                            <div className={`p-6 rounded-2xl border-2 shadow-lg mb-6 ${score >= 90 ? 'bg-green-50 border-green-200' : score >= 70 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}`}>
+                                <h3 className="text-2xl font-black text-center mb-2 text-slate-800">Evaluación Práctica</h3>
+                                <div className="flex justify-center items-center gap-4 mb-4">
+                                    <div className="text-5xl">
+                                        {score >= 90 ? '🏆' : score >= 70 ? '👍' : '🤔'}
+                                    </div>
+                                    <div className="text-center">
+                                         <div className="text-sm font-bold text-slate-500 uppercase">Puntuación Final</div>
+                                         <div className={`text-4xl font-black ${score >= 90 ? 'text-green-600' : score >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>{score} / 100</div>
+                                    </div>
+                                </div>
+                                 <p className="text-center font-bold text-slate-700 mb-4">
+                                    {score >= 90 ? '¡Excelente técnica de micropipeteo!' : score >= 70 ? 'Buen trabajo, pero cuida la limpieza y el volumen.' : 'Debes practicar más. Revisa los errores abajo.'}
+                                </p>
+
+                                {penalties.length > 0 && (
+                                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mt-4">
+                                        <h4 className="font-bold text-red-600 mb-3 flex items-center">⚠️ Errores y Penalizaciones:</h4>
+                                        <ul className="space-y-3">
+                                            {penalties.map((p, idx) => (
+                                                <li key={idx} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                                                    <div className="flex justify-between font-bold text-slate-800">
+                                                        <span>{p.reason}</span>
+                                                        <span className="text-red-500">-{p.points} pts</span>
+                                                    </div>
+                                                     <p className="text-slate-600 mt-1 text-xs italic">💡 {p.advice}</p>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button 
+                                onClick={() => {
+                                    AudioEngine.init(); AudioEngine.playClick();
+                                    loadExercise(0);
+                                }}
+                                className="w-full bg-[#005682] text-white py-4 rounded-xl font-bold shadow-lg hover:bg-[#003b57] transition-transform hover:scale-105"
+                            >
+                                ↻ Reiniciar y Mejorar Técnica
+                            </button>
+                        </div>
+                    );
+                }
+
+                return (
+                    <div className="p-6 overflow-y-auto flex-1 flex flex-col">
+                        <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 mb-6 shadow-inner">
+                            <h3 className="font-bold text-[#005682] text-lg mb-2">{ex.title}</h3>
+                            <p className="text-sm text-slate-600 font-medium">{ex.desc}</p>
+                        </div>
+                        
+                        <div className="ml-2 pl-4 border-l-2 border-slate-200 flex-1">
+                            {ex.steps.map((step, idx) => {
+                                const isDone = completedSteps.includes(step.id);
+                                const isActive = !isDone && (idx === 0 || completedSteps.includes(ex.steps[idx-1].id));
+                                
+                                return (
+                                    <div key={step.id} className={`flex items-start gap-3 mb-5 transition-all duration-300 ${isDone ? 'opacity-50' : isActive ? 'transform translate-x-1' : 'opacity-70'}`}>
+                                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 
+                                            ${isDone ? 'bg-green-500 text-white shadow-inner' : isActive ? 'bg-blue-500 text-white shadow-md ring-2 ring-blue-200' : 'bg-slate-200 text-slate-400'}`}>
+                                            {isDone ? '✓' : idx + 1}
+                                        </div>
+                                        <div className={`text-sm ${isDone ? 'line-through text-slate-400' : 'text-slate-700 font-bold'} flex-1 leading-tight`}>
+                                            {step.text}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {isComplete && (
+                            <div className="mt-8 animate-fade-in-up">
+                                <div className="bg-green-50 border border-green-200 text-green-700 p-4 rounded-xl text-center font-bold shadow-sm mb-4">
+                                    🎉 ¡Nivel Completado!
+                                </div>
+                                <button 
+                                    onClick={() => {
+                                        AudioEngine.init(); AudioEngine.playClick();
+                                        loadExercise(currentExerciseIdx + 1);
+                                    }}
+                                    className="w-full bg-[#005682] text-white py-3 rounded-xl font-bold shadow-lg hover:bg-[#003b57] transition-transform hover:scale-105"
+                                >
+                                    Siguiente Nivel ▶
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            const activeEx = EXERCISE_DATA[currentExerciseIdx];
+
+            // --- COMPONENTE DR. METRIC HUD ---
+            const DrMetricHUD = () => (
+                <div className="dr-metric-hud animate-fade-in-up">
+                    <div className="dr-metric-avatar">
+                        <svg viewBox="0 0 100 100" className={`w-full h-full ${doctorEmotion === 'thinking' ? 'animate-pulse' : 'anim-float'}`}>
+                            <defs>
+                                <linearGradient id="screenGrad2" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#1e293b" />
+                                    <stop offset="100%" stopColor="#0f172a" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M 50 25 L 50 10" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" />
+                            <circle cx="50" cy="8" r="5" fill={doctorEmotion === 'warning' ? '#f59e0b' : '#38bdf8'} className="animate-pulse" />
+                            <rect x="15" y="25" width="70" height="60" rx="15" fill="#0f172a" stroke="#38bdf8" strokeWidth="4" />
+                            <rect x="25" y="35" width="50" height="40" rx="8" fill="url(#screenGrad2)" stroke="#334155" strokeWidth="2" />
+                            
+                            {doctorEmotion === 'success' ? (
+                                <g fill="none" stroke="#34d399" strokeWidth="4" strokeLinecap="round">
+                                    <path d="M 32 48 Q 37 40 42 48" />
+                                    <path d="M 58 48 Q 63 40 68 48" />
+                                    <path d="M 35 60 Q 50 80 65 60" />
+                                </g>
+                            ) : doctorEmotion === 'warning' ? (
+                                <g fill="none" stroke="#fbbf24" strokeWidth="4" strokeLinecap="round">
+                                    <path d="M 32 46 Q 37 42 42 45" />
+                                    <path d="M 58 45 Q 63 42 68 46" />
+                                    <path d="M 45 70 Q 50 68 55 70" />
+                                </g>
+                            ) : (
+                                <g fill="#38bdf8">
+                                    <circle cx="37" cy="48" r="5" className={doctorEmotion === 'thinking' ? 'animate-ping' : ''} />
+                                    <circle cx="63" cy="48" r="5" className={doctorEmotion === 'thinking' ? 'animate-ping' : ''} />
+                                    <path d="M 40 65 Q 50 75 60 65" fill="none" stroke="#38bdf8" strokeWidth="3" strokeLinecap="round" />
+                                </g>
+                            )}
+                        </svg>
+                    </div>
+                    <div className="dr-metric-bubble" style={{ borderColor: doctorEmotion === 'success' ? '#10b981' : doctorEmotion === 'warning' ? '#f59e0b' : '#38bdf8' }}>
+                        <p className="font-bold mb-1" style={{ color: doctorEmotion === 'success' ? '#10b981' : doctorEmotion === 'warning' ? '#f59e0b' : '#38bdf8' }}>Dr. Metric dice:</p>
+                        <p>{metricMessage}</p>
+                    </div>
+                </div>
+            );
+
+            // --- COMPONENTE TESIS MODAL ---
+            const ThesisModal = () => (
+                <div className="absolute inset-0 bg-slate-900/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowThesisInfo(false)}>
+                    <div className="bg-slate-100 p-8 rounded-3xl shadow-2xl w-full max-w-3xl text-slate-800 border-4 border-slate-300 relative" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setShowThesisInfo(false)} className="absolute top-4 right-4 text-slate-500 hover:text-red-500 font-bold text-3xl transition-colors">&times;</button>
+                        
+                        <div className="flex justify-around items-center mb-6 border-b-2 border-slate-300 pb-4">
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/f/f8/Logo_Instituto_Polit%C3%A9cnico_Nacional.png" alt="IPN" className="h-20 object-contain drop-shadow-md" onError={(e)=>{e.target.style.display='none'}} />
+                            <div className="text-center font-bold text-[#005682] uppercase tracking-widest px-4">
+                                Universidad Abierta y a Distancia de México<br/>
+                                División de Ciencias de la Salud Biológicas y Ambientales<br/>
+                                Ingeniería en Biotecnología
+                            </div>
+                            <img src="https://upload.wikimedia.org/wikipedia/commons/2/22/Logo_UnADM.png" alt="UnADM" className="h-16 object-contain drop-shadow-md" onError={(e)=>{e.target.style.display='none'}} />
+                        </div>
+                        
+                        <div className="bg-white p-6 rounded-2xl shadow-inner mb-6 text-center border border-slate-200">
+                            <p className="font-bold text-slate-800 italic text-sm md:text-base">
+                                "Evaluación del efecto potencial del flavanol (-)-epicatequina en la repolarización de macrófagos humanos de fenotipo proinflamatorio a fenotipo antiinflamatorio."
+                            </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm mb-6">
+                            <div className="bg-blue-50 p-4 rounded-xl border border-blue-200 shadow-sm">
+                                <p className="text-slate-500 font-bold uppercase tracking-wider mb-2 text-xs">Presenta:</p>
+                                <p className="font-black text-[#005682] text-xl">Edsel Yahvi Méndez Hernández</p>
+                                <p className="font-bold text-slate-500 mt-1">Matrícula: ES181001269</p>
+                            </div>
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
+                                <p className="text-slate-500 font-bold uppercase tracking-wider mb-2 text-xs">Asesores:</p>
+                                <p className="font-bold text-slate-800">Dra. Rocío del Pilar Rueda Zozaya <span className="font-normal text-slate-500">(Interno)</span></p>
+                                <p className="font-bold text-slate-800 mt-1">Dra. Nayelli Nájera García <span className="font-normal text-slate-500">(Externo)</span></p>
+                                <p className="font-bold text-slate-800 mt-1">Yuridia Martínez Meza <span className="font-normal text-slate-500">(Segundo Externo)</span></p>
+                            </div>
+                        </div>
+
+                        <div className="text-center font-bold text-slate-500 text-xs uppercase tracking-widest border-t border-slate-300 pt-4">
+                            Laboratorio de Investigación Cardiometabólica (LICAM)<br/>
+                            Escuela Superior de Medicina IPN. CDMX, 2026.
+                        </div>
+                    </div>
+                </div>
+            );
+
+            return (
+                <div className="flex h-screen w-full bg-slate-900 relative">
+                    
+                    {/* Componente del Asistente Virtual */}
+                    <DrMetricHUD />
+                    
+                    {showThesisInfo && <ThesisModal />}
+
+                    {/* Botón de Información (Tesis) en la esquina superior izquierda */}
+                    <div className="absolute top-6 left-6 z-50">
+                        <button onClick={() => { AudioEngine.init(); AudioEngine.playClick(); setShowThesisInfo(true); }} className="bg-white/80 text-[#005682] border border-[#005682]/30 px-4 py-2 rounded-full shadow-lg hover:bg-white font-bold text-xs transition-all transform hover:scale-105 flex items-center gap-2 has-tooltip">
+                            <span className="text-lg leading-none">📚</span> Ver Info de Tesis
+                        </button>
+                    </div>
+
+                    {/* -- ÁREA DE SIMULACIÓN (IZQUIERDA) -- */}
+                    <div className="flex-grow relative bg-gradient-to-br from-[#e0eafc] to-[#cfdef3] lab-bg-grid flex flex-col shadow-[inset_-10px_0_20px_rgba(0,0,0,0.05)] overflow-hidden">
+                        
+                        {/* Repisa Superior (Cajas de Puntas) */}
+                        <div className="absolute top-[12%] w-full flex justify-center z-10">
+                            <div className="w-[85%] max-w-4xl h-5 bg-[#cbd5e1] rounded shadow-[0_15px_25px_rgba(0,0,0,0.15)] border-b-[3px] border-[#94a3b8] flex justify-around items-end px-10">
+                                <SVGTipBox type="P2" isOpen={boxesOpen.P2} onClick={handleBoxClick} />
+                                <SVGTipBox type="P20" isOpen={boxesOpen.P20} onClick={handleBoxClick} />
+                                <SVGTipBox type="P200" isOpen={boxesOpen.P200} onClick={handleBoxClick} />
+                                <SVGTipBox type="P1000" isOpen={boxesOpen.P1000} onClick={handleBoxClick} />
+                            </div>
+                        </div>
+
+                        {/* HUD de Pipeta en Mano (Centrado en pared) */}
+                        {activePipette && (
+                            <div className="absolute top-[42%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white/70 backdrop-blur-md p-6 rounded-3xl border border-white/80 shadow-2xl z-40 flex items-center gap-8 pointer-events-none transition-all">
+                                <div>
+                                    <div className="font-bold text-slate-800 text-sm uppercase tracking-wider mb-1">Mano Activa</div>
+                                    <div className="text-xl font-bold text-[#005682]">Pipeta <span className="font-black bg-[#005682] text-white px-2 py-0.5 rounded ml-1">{activePipette}</span></div>
+                                    {hasTip && <div className="text-sm text-green-700 font-bold mt-2 flex items-center gap-1">✓ Punta montada</div>}
+                                    {liquidInTip.vol > 0 && <div className="text-sm text-red-600 font-bold mt-1 flex items-center gap-1">💧 {liquidInTip.vol} µL en punta</div>}
+                                </div>
+                                <div className="pointer-events-auto filter drop-shadow-2xl scale-125 origin-top">
+                                    <SVGPipette type={activePipette} isRack={false} />
+                                    <div className="text-center text-[10px] font-bold text-white mt-4 bg-slate-800 px-3 py-1.5 rounded-full cursor-pointer pointer-events-auto shadow-md hover:bg-slate-700 transition" onClick={handleOpenVolModal}>
+                                        Clic display (Vol)
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Mesa de Laboratorio Flexbox */}
+                        <div className="absolute bottom-0 w-full flex flex-col z-10">
+                            
+                            <div className="w-full h-[150px] bg-[#94a3b8] border-t-[10px] border-[#64748b] flex justify-between items-end pb-4 px-12 shadow-[inset_0_20px_20px_rgba(0,0,0,0.1)] gap-6">
+                                
+                                {/* 1. Rack de Pipetas */}
+                                <div className="relative w-72 h-48 flex-shrink-0 flex justify-around items-end pb-2">
+                                    <div className="absolute bottom-0 w-full h-4 bg-[#e2e8f0] rounded-t-sm shadow border-b border-[#94a3b8]"></div>
+                                    <div className="absolute bottom-4 left-4 w-2 h-36 bg-[#e2e8f0]"></div>
+                                    <div className="absolute bottom-4 right-4 w-2 h-36 bg-[#e2e8f0]"></div>
+                                    <div className="absolute top-8 w-full h-6 bg-white shadow-sm border-b border-slate-200 flex items-center justify-around px-6">
+                                       {[1,2,3,4].map(i => <div key={i} className="w-4 h-4 rounded-full bg-slate-100 shadow-inner"></div>)}
+                                    </div>
+                                    <SVGPipette type="P2" isRack={true} />
+                                    <SVGPipette type="P20" isRack={true} />
+                                    <SVGPipette type="P200" isRack={true} />
+                                    <SVGPipette type="P1000" isRack={true} />
+                                </div>
+
+                                {/* 2. Gradilla de Tubos Dinámica */}
+                                <div className="relative w-[340px] h-[120px] flex-shrink-0 flex justify-center items-end gap-6 pb-2 bg-[#7e8e9f] rounded-lg shadow-[inset_0_-5px_15px_rgba(0,0,0,0.2)] border-2 border-[#5c6d80] px-4">
+                                    <span className="absolute top-2 left-3 text-[10px] font-bold text-slate-300 uppercase tracking-widest">Gradilla de Muestras</span>
+                                    {activeEx.containers.map(c => {
+                                        const currentVol = c.isSource ? 1000 : (targetState[c.id]?.vol || 0);
+                                        const currentColor = c.isSource ? c.color : (targetState[c.id]?.color || 'transparent');
+                                        return <SVGEppendorf key={c.id} label={c.label} color={currentColor} vol={currentVol} onClick={() => handleTubeClick(c)} />
+                                    })}
+                                </div>
+
+                                {/* 3. Papel Secante (Solo si el nivel lo requiere) */}
+                                {activeEx.hasPaper ? (
+                                    <div className="relative w-[240px] h-[90px] flex-shrink-0 bg-white rounded shadow-xl border border-slate-200 p-2 flex flex-col mb-2">
+                                        <span className="text-[10px] font-bold text-center text-slate-400 mb-1">Papel Secante</span>
+                                        <div className="flex justify-around items-center h-full">
+                                            {['A', 'B', 'C', 'D'].map(spot => (
+                                                <div key={spot} className="flex flex-col items-center group cursor-pointer" onClick={() => handlePaperClick(spot)}>
+                                                    <span className="text-[10px] font-bold text-slate-700">{spot}</span>
+                                                    <div className="w-8 h-8 rounded-full border-2 border-slate-200 mt-1 flex items-center justify-center relative bg-slate-50 group-hover:border-blue-300 transition-colors">
+                                                        {paperSpots[spot] > 0 && (
+                                                            <div className="w-6 h-6 rounded-full bg-[#ef4444] opacity-80 mix-blend-multiply" 
+                                                                 style={{ transform: `scale(${Math.min(1, paperSpots[spot]/20)})` }}></div>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[9px] font-mono mt-1 text-slate-500">{paperSpots[spot].toFixed(1)}µl</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="w-[240px] flex-shrink-0"></div> /* Spacer if no paper */
+                                )}
+
+                                {/* 4. Basurero RPBI */}
+                                <SVGTrashBin />
+                            </div>
+
+                            {/* Frente Cajones */}
+                            <div className="w-full h-16 bg-[#475569] border-t-[3px] border-[#334155] flex justify-center gap-6 px-10 shadow-2xl">
+                                {[1, 2, 3, 4].map(i => (
+                                    <div key={i} className="flex-1 max-w-[200px] h-12 mt-2 bg-[#64748b] border border-[#334155] rounded-sm shadow-inner flex justify-center pt-2">
+                                        <div className="w-20 h-2 bg-[#94a3b8] rounded-full shadow-md border border-[#475569]"></div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Botón Reset Bottom Left */}
+                        <div className="absolute bottom-6 left-6 z-50">
+                            <button onClick={() => {AudioEngine.init(); AudioEngine.playClick(); loadExercise(currentExerciseIdx);}} className="bg-white text-slate-700 px-6 py-2 rounded-lg shadow-lg border border-slate-200 hover:bg-slate-50 font-bold text-sm transition-transform hover:scale-105">
+                                Reiniciar Nivel ↺
+                            </button>
+                        </div>
+
+                        {/* Modal Profesional de Ajuste de Volumen */}
+                        {showVolModal && (
+                            <div className="absolute inset-0 bg-slate-900/60 z-50 flex items-center justify-center backdrop-blur-sm">
+                                <div className="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center border border-slate-100">
+                                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-100"><span className="text-3xl">⚙️</span></div>
+                                    <h3 className="font-bold text-[#005682] text-2xl mb-1">Ajustar Volumen</h3>
+                                    <p className="text-sm text-slate-500 mb-6 font-medium bg-slate-50 py-1 rounded">Rango Permitido: {PIPETTES[activePipette].min} - {PIPETTES[activePipette].max} µL</p>
+                                    
+                                    <div className="flex items-center justify-center gap-6 mb-8 bg-slate-100 p-4 rounded-xl border border-slate-200 shadow-inner">
+                                        <button onClick={() => handleVolumeChange('down')} className="w-12 h-12 bg-white rounded-full font-bold text-3xl shadow text-slate-600 hover:text-blue-600 hover:scale-105 transition-all">-</button>
+                                        <div className="flex flex-col items-center">
+                                            <input type="number" value={tempVol} onChange={(e) => setTempVol(e.target.value)}
+                                                   className="w-28 text-center text-4xl font-mono font-bold bg-transparent border-b-4 border-[#005682] focus:outline-none text-slate-800"
+                                                   step={PIPETTES[activePipette].step} />
+                                            <span className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">Microlitros</span>
+                                        </div>
+                                        <button onClick={() => handleVolumeChange('up')} className="w-12 h-12 bg-white rounded-full font-bold text-3xl shadow text-slate-600 hover:text-blue-600 hover:scale-105 transition-all">+</button>
+                                    </div>
+                                    
+                                    <div className="flex gap-4">
+                                        <button onClick={() => {AudioEngine.init(); AudioEngine.playClick(); setShowVolModal(false);}} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">Cancelar</button>
+                                        <button onClick={handleSaveVolume} className="flex-1 py-3 bg-[#005682] text-white font-bold rounded-xl shadow-lg hover:bg-[#003b57] transition">Guardar volumen</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* -- ÁREA DEL CUADERNO (DERECHA) -- */}
+                    <div className="w-[420px] bg-white flex flex-col shadow-[-15px_0_30px_rgba(0,0,0,0.1)] z-20 border-l border-slate-200">
+                        <div className="bg-notebook-header text-white p-5 flex items-center gap-5 relative overflow-hidden">
+                            <div className="absolute -right-4 top-0 opacity-10 scale-150">📘</div>
+                            <div className="bg-white/20 p-3 rounded-lg backdrop-blur shadow-sm"><span className="text-2xl">📘</span></div>
+                            <div>
+                                <div className="text-[10px] font-black text-blue-200 tracking-widest mb-1">CUADERNO DE LABORATORIO</div>
+                                <div className="text-xl font-bold leading-none">Nivel {currentExerciseIdx + 1} de 4</div>
+                            </div>
+                        </div>
+                        <div className="bg-notebook-sub text-white px-6 py-4 flex items-center justify-between shadow-inner border-y border-slate-800">
+                            <div className="flex items-center gap-3">
+                                <span className="text-lg font-bold tracking-widest">PROTOCOLO</span>
+                            </div>
+                            {/* Puntuación en tiempo real en la libreta */}
+                            <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
+                                <span className="text-sm font-bold">Puntos:</span>
+                                <span className={`font-black text-lg ${score < 70 ? 'text-red-300' : 'text-green-300'}`}>{score}</span>
+                            </div>
+                        </div>
+                        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
+                            <div className="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                                <div className="h-full bg-blue-500 transition-all duration-700 ease-out" style={{ width: `${(completedSteps.length / EXERCISE_DATA[currentExerciseIdx].steps.length) * 100}%` }}></div>
+                            </div>
+                            <div className="text-sm font-black text-slate-500 bg-white px-3 py-1 rounded-full shadow-sm border border-slate-200">
+                                {completedSteps.length}/{EXERCISE_DATA[currentExerciseIdx].steps.length}
+                            </div>
+                        </div>
+
+                        {renderProtocolSteps()}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<MicropipetteSimulator />);
+    </script>
+</body>
+</html>

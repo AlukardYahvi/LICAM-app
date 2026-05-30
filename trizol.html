@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extracción Trizol - Simulador Pro</title>
+    
+    <!-- React & Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'metric-green': '#2ecc71',
+                    },
+                    animation: {
+                        'bounce-slow': 'bounce 3s infinite',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800&display=swap');
+        body { font-family: 'Open Sans', sans-serif; user-select: none; }
+        
+        .lab-bg-grid {
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(0,0,0,0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.03) 1px, transparent 1px);
+        }
+        
+        .bg-notebook-header { background-color: #5b21b6; } /* Violeta oscuro para Trizol/RNA */
+        .bg-notebook-sub { background-color: #4c1d95; }
+        
+        .pipette-lcd { font-family: 'Courier New', Courier, monospace; letter-spacing: 1px; font-weight: bold;}
+        
+        .svg-drop-shadow { filter: drop-shadow(0px 8px 6px rgba(0,0,0,0.2)); }
+        .svg-hover-glow:hover { filter: drop-shadow(0px 0px 10px rgba(167, 139, 250, 0.6)); cursor: pointer; transform: translateY(-2px); transition: all 0.2s;}
+        
+        .tooltip {
+            visibility: hidden;
+            background-color: rgba(15, 23, 42, 0.9);
+            color: white;
+            text-align: center;
+            border-radius: 6px;
+            padding: 6px 10px;
+            position: absolute;
+            z-index: 50;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+        }
+        .tooltip::after {
+            content: "";
+            position: absolute;
+            top: 100%; left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+            border-color: rgba(15, 23, 42, 0.9) transparent transparent transparent;
+        }
+        .has-tooltip:hover .tooltip { visibility: visible; }
+
+        @keyframes spin-fast { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .anim-spin-fast { animation: spin-fast 0.5s linear infinite; }
+        
+        @keyframes shake { 0% { transform: translateX(0); } 25% { transform: translateX(-2px) rotate(-2deg); } 75% { transform: translateX(2px) rotate(2deg); } 100% { transform: translateX(0); } }
+        .anim-shake { animation: shake 0.2s linear infinite; }
+
+        /* Animaciones para Dr. Metric */
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .anim-float { animation: float 3s ease-in-out infinite; }
+
+        .dr-metric-hud {
+            position: absolute;
+            bottom: 260px; /* Posicionado para no estorbar las cajas ni los tubos */
+            left: 40px;
+            z-index: 100;
+            display: flex;
+            align-items: flex-start;
+            pointer-events: none; /* No interfiere con clics */
+        }
+        .dr-metric-avatar {
+            width: 80px;
+            height: 80px;
+            background-color: transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-right: 10px;
+            z-index: 10;
+        }
+        .dr-metric-bubble {
+            background-color: #fff;
+            padding: 15px 20px;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            max-width: 280px;
+            position: relative;
+            font-size: 13px;
+            color: #333;
+            border: 2px solid #a855f7;
+            transition: border-color 0.3s ease;
+        }
+        .dr-metric-bubble::after {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: -10px;
+            border-width: 10px 10px 10px 0;
+            border-style: solid;
+            border-color: transparent #fff transparent transparent;
+            display: block;
+            width: 0;
+            z-index: 1;
+        }
+        .dr-metric-bubble::before {
+            content: '';
+            position: absolute;
+            top: 23px;
+            left: -13px;
+            border-width: 12px 12px 12px 0;
+            border-style: solid;
+            border-color: transparent inherit transparent transparent;
+            display: block;
+            width: 0;
+            z-index: 0;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 overflow-hidden selection:bg-purple-300">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- MOTOR DE SONIDO (Web Audio API) ---
+        const AudioEngine = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            },
+            playTone(freq, type, duration, vol=0.1) {
+                if (!this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + duration);
+            },
+            playClick() { this.init(); this.playTone(1200, 'square', 0.05, 0.02); },
+            playPlastic() { this.init(); this.playTone(400, 'triangle', 0.1, 0.05); },
+            playGlass() { 
+                this.init(); 
+                this.playTone(2000, 'sine', 0.1, 0.05); 
+                setTimeout(() => this.playTone(2800, 'sine', 0.15, 0.02), 40); 
+            },
+            playPour() {
+                this.init();
+                const bufferSize = this.ctx.sampleRate * 0.5; 
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, this.ctx.currentTime);
+                filter.frequency.linearRampToValueAtTime(200, this.ctx.currentTime + 0.5);
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.5);
+                noise.connect(filter); filter.connect(gain); gain.connect(this.ctx.destination);
+                noise.start();
+            },
+            playError() {
+                this.init();
+                this.playTone(150, 'sawtooth', 0.3, 0.05);
+                setTimeout(() => this.playTone(140, 'sawtooth', 0.4, 0.05), 150);
+            },
+            playSuccess() {
+                this.init();
+                this.playTone(523.25, 'sine', 0.1, 0.05); 
+                setTimeout(() => this.playTone(659.25, 'sine', 0.1, 0.05), 100); 
+                setTimeout(() => this.playTone(783.99, 'sine', 0.3, 0.05), 200); 
+            },
+            playCentrifuge() {
+                this.init();
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(50, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(150, this.ctx.currentTime + 0.5);
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime + 1.5);
+                osc.frequency.linearRampToValueAtTime(50, this.ctx.currentTime + 2.0);
+                gain.gain.setValueAtTime(0, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 0.5);
+                gain.gain.setValueAtTime(0.2, this.ctx.currentTime + 1.5);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 2.0);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(); osc.stop(this.ctx.currentTime + 2.0);
+            },
+            playBeep() {
+                this.init();
+                this.playTone(1500, 'sine', 0.1, 0.05);
+                setTimeout(() => this.playTone(1500, 'sine', 0.1, 0.05), 200);
+            },
+            playMix() {
+                this.init();
+                for(let i=0; i<4; i++) {
+                    setTimeout(() => this.playTone(300 + Math.random()*100, 'triangle', 0.1, 0.03), i*200);
+                }
+            }
+        };
+
+        const PIPETTES = {
+            'P20': { color: '#f1c40f', tipColor: '#fef9e7', min: 0.5, max: 20.0, step: 0.5 },
+            'P200': { color: '#2ecc71', tipColor: '#e8f8f5', min: 20.0, max: 200.0, step: 1.0 },
+            'P1000': { color: '#3498db', tipColor: '#ebf5fb', min: 100.0, max: 1000.0, step: 10.0 }
+        };
+
+        const EXERCISE_DATA = [
+            {
+                id: 0,
+                title: "Fase 1: Lisis y Separación de Fases",
+                desc: "Lisado de 3 millones de células con reactivo Trizol y uso de Cloroformo para generar la separación de fases (Acuosa, Interfase y Orgánica).",
+                steps: [
+                    { id: 'l1_1', text: 'Aspira 300 µL de Trizol (Pipeta P1000).' },
+                    { id: 'l1_2', text: 'Añádelo al Pellet Celular (Tubo Principal).' },
+                    { id: 'l1_3', text: 'Incuba 5 min a temp. ambiente (Clic en Reloj).' },
+                    { id: 'l1_4', text: 'Aspira 60 µL de Cloroformo (Pipeta P200).' },
+                    { id: 'l1_5', text: 'Añádelo al Tubo Principal y mezcla con la mano.' },
+                    { id: 'l1_6', text: 'Centrifuga 15 min a 12,000xg a 4°C.' }
+                ]
+            },
+            {
+                id: 1,
+                title: "Fase 2: Extracción y Precipitación de ARN",
+                desc: "Recuperación selectiva de la fase acuosa superior (transparente) y precipitación del ARN con Isopropanol.",
+                steps: [
+                    { id: 'l2_1', text: 'Aspira 150 µL de Fase Acuosa (Arriba) del Tubo Principal.' },
+                    { id: 'l2_2', text: 'Transfiere la fase acuosa al "Tubo ARN".' },
+                    { id: 'l2_3', text: 'Aspira 150 µL de Isopropanol.' },
+                    { id: 'l2_4', text: 'Añádelo al Tubo ARN e Incuba 10 min.' },
+                    { id: 'l2_5', text: 'Centrifuga por 10 min a 12,000xg.' },
+                    { id: 'l2_6', text: 'Descarta el sobrenadante (Aspirar y tirar a Basura).' }
+                ]
+            },
+            {
+                id: 2,
+                title: "Fase 3: Recuperación DNA y Proteínas",
+                desc: "Precipitación del ADN en la fase orgánica con Etanol, y recuperación de Proteínas con Isopropanol a partir del sobrenadante.",
+                steps: [
+                    { id: 'l3_1', text: 'Añade 90 µL de Etanol 100% a la fase orgánica restante (Tubo Principal).' },
+                    { id: 'l3_2', text: 'Centrifuga 5 min. (El ADN formará un pellet).' },
+                    { id: 'l3_3', text: 'Transfiere el sobrenadante (sin tocar pellet) al "Tubo Prot".' },
+                    { id: 'l3_4', text: 'Añade 450 µL de Isopropanol al "Tubo Prot".' },
+                    { id: 'l3_5', text: 'Incuba 10 min y luego Centrifuga 10 min.' }
+                ]
+            }
+        ];
+
+        // --- COMPONENTE AVATAR DR. METRIC ---
+        const SVGRobotFriendly = ({ emotion }) => {
+            let color = "#a855f7"; // Morado claro acorde al tema Trizol
+            let mouth = "M 40 65 Q 50 75 60 65"; 
+            let eyeM = "circle";
+
+            if (emotion === 'success') {
+                color = "#34d399"; 
+                mouth = "M 35 60 Q 50 80 65 60"; 
+                eyeM = "happy";
+            } else if (emotion === 'warning') {
+                color = "#fbbf24"; 
+                mouth = "M 45 70 Q 50 68 55 70"; 
+                eyeM = "worried"; 
+            } else if (emotion === 'thinking') {
+                color = "#c084fc"; 
+                mouth = "M 40 70 L 60 70"; 
+                eyeM = "circle";
+            }
+
+            return (
+                <svg viewBox="0 0 100 100" className={`w-full h-full ${emotion === 'thinking' ? 'animate-pulse' : 'anim-float'}`}>
+                    <defs>
+                        <linearGradient id="screenGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#1e293b" />
+                            <stop offset="100%" stopColor="#0f172a" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M 50 25 L 50 10" stroke={color} strokeWidth="3" strokeLinecap="round" />
+                    <circle cx="50" cy="8" r="5" fill={emotion === 'warning' ? '#f59e0b' : color} className="animate-pulse" />
+                    <rect x="15" y="25" width="70" height="60" rx="15" fill="#0f172a" stroke={color} strokeWidth="4" />
+                    <rect x="25" y="35" width="50" height="40" rx="8" fill="url(#screenGrad)" stroke="#334155" strokeWidth="2" />
+                    
+                    {eyeM === 'happy' ? (
+                        <g fill="none" stroke={color} strokeWidth="4" strokeLinecap="round">
+                            <path d="M 32 48 Q 37 40 42 48" />
+                            <path d="M 58 48 Q 63 40 68 48" />
+                        </g>
+                    ) : eyeM === 'worried' ? (
+                        <g fill="none" stroke={color} strokeWidth="4" strokeLinecap="round">
+                            <path d="M 32 46 Q 37 42 42 45" />
+                            <path d="M 58 45 Q 63 42 68 46" />
+                        </g>
+                    ) : (
+                        <g fill={color}>
+                            <circle cx="37" cy="48" r="5" className={emotion === 'thinking' ? 'animate-ping' : ''} />
+                            <circle cx="63" cy="48" r="5" className={emotion === 'thinking' ? 'animate-ping' : ''} />
+                        </g>
+                    )}
+                    <path d={mouth} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" className="transition-all duration-300" />
+                </svg>
+            );
+        };
+
+        function TrizolSimulator() {
+            // Inicializar Audio al hacer clic
+            useEffect(() => {
+                const initAudio = () => AudioEngine.init();
+                window.addEventListener('click', initAudio, {once:true});
+                return () => window.removeEventListener('click', initAudio);
+            }, []);
+
+            const [currentLevel, setCurrentLevel] = useState(0);
+            const [completedSteps, setCompletedSteps] = useState([]);
+            
+            // UI y Herramientas
+            const [activePipette, setActivePipette] = useState(null); 
+            const [volumes, setVolumes] = useState({ P20: 0, P200: 0, P1000: 0 });
+            const [boxesOpen, setBoxesOpen] = useState({ P20: false, P200: false, P1000: false });
+            const [hasTip, setHasTip] = useState(null); 
+            const [tipUsed, setTipUsed] = useState(false); // Rastrea si la punta ya se usó
+            const [showVolModal, setShowVolModal] = useState(false);
+            const [tempVol, setTempVol] = useState(0);
+            const [showCredits, setShowCredits] = useState(false);
+            
+            // --- DR METRIC Y PUNTUACION ---
+            const [metricMessage, setMetricMessage] = useState('¡Hola! Soy Dr. Metric. Te guiaré en tu extracción con Trizol.');
+            const [doctorEmotion, setDoctorEmotion] = useState('normal');
+            const [score, setScore] = useState(100);
+            const [penalties, setPenalties] = useState([]);
+            const metricTimeoutRef = useRef(null);
+
+            const [isCentrifuging, setIsCentrifuging] = useState(false);
+            const [isIncubating, setIsIncubating] = useState(false);
+            const [isMixing, setIsMixing] = useState(false);
+
+            // Contenidos de la punta
+            const [tipContent, setTipContent] = useState({ vol: 0, type: null, color: 'transparent' });
+            
+            const initialTubes = {
+                t_main: { label: 'Muestra', phases: [{color: 'transparent', vol: 50}], pellet: {color: '#fef08a', label: 'Células'} },
+                t_rna: { label: 'Tubo ARN', phases: [], pellet: null },
+                t_prot: { label: 'Tubo Prot', phases: [], pellet: null },
+            };
+            const [tubes, setTubes] = useState(initialTubes);
+
+            const showMetricMessage = (message, emotion = 'normal', duration = 5000) => {
+                if (metricTimeoutRef.current) clearTimeout(metricTimeoutRef.current);
+                setMetricMessage(message);
+                setDoctorEmotion(emotion);
+                if (duration > 0) {
+                    metricTimeoutRef.current = setTimeout(() => {
+                        setMetricMessage("¡Sigue así! Recuerda trabajar con cuidado.");
+                        setDoctorEmotion('normal');
+                    }, duration);
+                }
+            };
+
+            const addPenalty = (points, reason, advice) => {
+                AudioEngine.playError();
+                setScore(prev => Math.max(0, prev - points));
+                setPenalties(prev => [...prev, { points, reason, advice }]);
+                showMetricMessage(`¡Atención! ${reason}. ${advice}`, 'warning', 8000);
+            };
+
+            // EVALUADOR DEL MOTOR DE ESTADOS
+            useEffect(() => {
+                const ex = EXERCISE_DATA[currentLevel];
+                const done = new Set(completedSteps);
+                let newlyCompleted = [];
+                const markDone = (stepId) => { if (!done.has(stepId) && !newlyCompleted.includes(stepId)) newlyCompleted.push(stepId); };
+
+                // NIVEL 1
+                if (currentLevel === 0) {
+                    if (tipContent.vol === 300 && tipContent.type === 'trizol') markDone('l1_1');
+                    if (done.has('l1_1') && tubes.t_main.phases.some(p => p.type === 'trizol')) markDone('l1_2');
+                    if (done.has('l1_2') && tubes.t_main.incubated_trizol) markDone('l1_3');
+                    if (done.has('l1_3') && tipContent.vol === 60 && tipContent.type === 'chloroform') markDone('l1_4');
+                    if (done.has('l1_4') && tubes.t_main.mixed_chloroform) markDone('l1_5');
+                    if (done.has('l1_5') && tubes.t_main.separated) markDone('l1_6');
+                }
+                // NIVEL 2
+                else if (currentLevel === 1) {
+                    if (tipContent.type === 'aqueous_phase' && tipContent.vol >= 100) markDone('l2_1');
+                    if (done.has('l2_1') && tubes.t_rna.phases.some(p => p.type === 'aqueous_phase')) markDone('l2_2');
+                    if (done.has('l2_2') && tipContent.vol >= 150 && tipContent.type === 'isopropanol') markDone('l2_3');
+                    if (done.has('l2_3') && tubes.t_rna.incubated_iso) markDone('l2_4');
+                    if (done.has('l2_4') && tubes.t_rna.pellet?.label === 'Pellet ARN') markDone('l2_5');
+                    if (done.has('l2_5') && tubes.t_rna.phases.length === 0 && tubes.t_rna.pellet) markDone('l2_6');
+                }
+                // NIVEL 3
+                else if (currentLevel === 2) {
+                    if (tubes.t_main.phases.some(p => p.type === 'ethanol100')) markDone('l3_1');
+                    if (done.has('l3_1') && tubes.t_main.pellet?.label === 'Pellet DNA') markDone('l3_2');
+                    if (done.has('l3_2') && tubes.t_prot.phases.some(p => p.type === 'organic_phase')) markDone('l3_3');
+                    if (done.has('l3_3') && tubes.t_prot.phases.some(p => p.type === 'isopropanol')) markDone('l3_4');
+                    if (done.has('l3_4') && tubes.t_prot.pellet?.label === 'Pellet Proteína') markDone('l3_5');
+                }
+
+                if (newlyCompleted.length > 0) {
+                    setCompletedSteps(prev => {
+                        const newSteps = [...prev, ...newlyCompleted];
+                        if (newSteps.length === EXERCISE_DATA[currentLevel].steps.length) {
+                            AudioEngine.playSuccess();
+                            if (currentLevel === EXERCISE_DATA.length - 1) {
+                                showMetricMessage("¡Felicidades! Has completado todas las fases. Revisemos tu evaluación final.", "success", 0);
+                            } else {
+                                showMetricMessage("¡Fase completada perfectamente!", "success", 4000);
+                            }
+                        } else {
+                            AudioEngine.playBeep();
+                        }
+                        return newSteps;
+                    });
+                }
+            }, [tipContent, tubes, currentLevel, completedSteps]);
+
+            // Función Helper para cajas abiertas
+            const checkBoxesOpen = () => {
+                const isOpen = Object.values(boxesOpen).some(val => val);
+                if (isOpen) {
+                    addPenalty(3, "Caja de puntas abierta", "Cierra las cajas inmediatamente después de usarlas para evitar contaminación de RNasas y polvo.");
+                    setBoxesOpen({ P20: false, P200: false, P1000: false });
+                }
+            };
+
+            // INTERACCIONES CON HERRAMIENTAS Y TUBOS
+            const handleActionClick = (action) => {
+                AudioEngine.init();
+                const ex = EXERCISE_DATA[currentLevel];
+                const done = new Set(completedSteps);
+                
+                if (action === 'timer') {
+                    AudioEngine.playClick();
+                    setIsIncubating(true);
+                    setTimeout(() => {
+                        setIsIncubating(false);
+                        AudioEngine.playBeep();
+                        // Logica de incubaciones
+                        if (currentLevel === 0 && done.has('l1_2') && !done.has('l1_3')) {
+                            setTubes(prev => ({...prev, t_main: {...prev.t_main, incubated_trizol: true}}));
+                            showMetricMessage("Incubación completada. Células lisadas.", "success");
+                        }
+                        if (currentLevel === 1 && done.has('l2_2') && tubes.t_rna.phases.some(p=>p.type==='isopropanol')) {
+                            setTubes(prev => ({...prev, t_rna: {...prev.t_rna, incubated_iso: true}}));
+                            showMetricMessage("Incubación lista. El ARN se precipitará al centrifugar.", "success");
+                        }
+                        if (currentLevel === 2 && done.has('l3_4')) {
+                            setTubes(prev => ({...prev, t_prot: {...prev.t_prot, incubated_iso: true}}));
+                            showMetricMessage("Incubación de proteínas terminada.", "success");
+                        }
+                    }, 1500);
+                }
+                else if (action === 'centrifuge') {
+                    AudioEngine.playCentrifuge();
+                    setIsCentrifuging(true);
+                    setTimeout(() => {
+                        setIsCentrifuging(false);
+                        AudioEngine.playBeep();
+                        // Logica centrifugaciones
+                        if (currentLevel === 0 && done.has('l1_5') && !done.has('l1_6')) {
+                            setTubes(prev => ({
+                                ...prev, 
+                                t_main: {
+                                    ...prev.t_main, 
+                                    separated: true,
+                                    phases: [
+                                        {type: 'aqueous_phase', color: '#fca5a5', label: 'Fase Acuosa (ARN)', vol: 150},
+                                        {type: 'interphase', color: '#ffffff', label: 'Interfase (DNA)', vol: 10},
+                                        {type: 'organic_phase', color: '#991b1b', label: 'Fase Orgánica (Proteínas)', vol: 150}
+                                    ],
+                                    pellet: null 
+                                }
+                            }));
+                            showMetricMessage("Fases separadas. El ARN está en la fase superior (acuosa).", "success");
+                        }
+                        if (currentLevel === 1 && done.has('l2_4')) {
+                            setTubes(prev => ({
+                                ...prev, 
+                                t_rna: {
+                                    ...prev.t_rna, 
+                                    pellet: {color: '#f8fafc', label: 'Pellet ARN'}
+                                }
+                            }));
+                            showMetricMessage("Centrifugación completada. Observa el pellet de ARN.", "success");
+                        }
+                        if (currentLevel === 2 && done.has('l3_1') && !done.has('l3_2')) {
+                            setTubes(prev => ({
+                                ...prev, 
+                                t_main: {
+                                    ...prev.t_main, 
+                                    pellet: {color: '#fef08a', label: 'Pellet DNA'}
+                                }
+                            }));
+                            showMetricMessage("DNA precipitado en el fondo.", "success");
+                        }
+                        if (currentLevel === 2 && tubes.t_prot.incubated_iso) {
+                            setTubes(prev => ({
+                                ...prev, 
+                                t_prot: {
+                                    ...prev.t_prot, 
+                                    pellet: {color: '#fecdd3', label: 'Pellet Proteína'}
+                                }
+                            }));
+                            showMetricMessage("Proteínas precipitadas con éxito.", "success");
+                        }
+                    }, 2000);
+                }
+            };
+
+            const handleTubeClick = (type, isSource, color = 'transparent', tubeId = null) => {
+                AudioEngine.init();
+                
+                if (type === 'hand_mix' && tubeId === 't_main') {
+                    AudioEngine.playMix();
+                    setIsMixing(true);
+                    setTimeout(() => {
+                        setIsMixing(false);
+                        if (currentLevel === 0 && completedSteps.includes('l1_4') && tubes.t_main.phases.some(p=>p.type==='chloroform')) {
+                            setTubes(prev => ({...prev, t_main: {...prev.t_main, mixed_chloroform: true, phases: [{type: 'mixed', color: '#f87171', vol: 360, label: 'Emulsión'}]}}));
+                            showMetricMessage("Mezcla manual lista. Proceda a centrifugar.", "success");
+                        }
+                    }, 1000);
+                    return;
+                }
+
+                if (!activePipette || !hasTip) { 
+                    addPenalty(5, "Aspirar sin punta", "Siempre coloca una punta estéril (RNase-free) antes de intentar pipetear.");
+                    return; 
+                }
+                
+                // Validación estricta de punta y pipeta
+                if (hasTip !== activePipette) {
+                    addPenalty(5, "Punta incorrecta", `La pipeta ${activePipette} requiere puntas de su misma medida.`);
+                    return;
+                }
+
+                if (isSource) {
+                    // Aspirando de botella
+                    checkBoxesOpen();
+                    if (tipUsed && tipContent.vol === 0) {
+                        addPenalty(10, "Contaminación Cruzada", "Intentaste aspirar reactivo nuevo con una punta usada. ¡Se contamina el reactivo madre!");
+                    }
+                    
+                    const vol = volumes[activePipette];
+                    if (vol <= 0) { 
+                        addPenalty(2, "Volumen no ajustado", "Debes configurar el volumen correcto en el display de la pipeta.");
+                        return; 
+                    }
+                    if (tipContent.vol > 0) { 
+                        addPenalty(5, "Punta llena", "La punta ya contiene líquido en su interior. Dispénsalo o deséchalo.");
+                        return; 
+                    }
+                    
+                    AudioEngine.playPour();
+                    setTipContent({ vol, type, color });
+                    setTipUsed(true);
+                } 
+                else if (tubeId) {
+                    // Interactuando con tubo de trabajo
+                    checkBoxesOpen();
+                    const tube = tubes[tubeId];
+
+                    if (tipContent.vol === 0) {
+                        // ASPIRAR DEL TUBO DE TRABAJO
+                        if (tube.separated && tubeId === 't_main' && currentLevel === 1) {
+                            AudioEngine.playPour();
+                            const newPhases = tube.phases.filter(p => p.type !== 'aqueous_phase');
+                            setTubes(prev => ({...prev, t_main: {...prev.t_main, phases: newPhases}}));
+                            setTipContent({ vol: 150, type: 'aqueous_phase', color: '#fca5a5' });
+                            setTipUsed(true);
+                            showMetricMessage("Fase acuosa recuperada con éxito. Cuidado de no tocar la interfase.", "success");
+                        }
+                        else if (currentLevel === 1 && tubeId === 't_rna' && tube.pellet) {
+                            AudioEngine.playPour();
+                            setTubes(prev => ({...prev, t_rna: {...prev.t_rna, phases: []}}));
+                            setTipContent({ vol: 300, type: 'supernatant', color: '#fca5a5' });
+                            setTipUsed(true);
+                            showMetricMessage("Sobrenadante retirado.", "success");
+                        }
+                        else if (currentLevel === 2 && tubeId === 't_main' && tube.pellet?.label === 'Pellet DNA') {
+                            AudioEngine.playPour();
+                            const newPhases = [];
+                            setTubes(prev => ({...prev, t_main: {...prev.t_main, phases: newPhases}}));
+                            setTipContent({ vol: 150, type: 'organic_phase', color: '#991b1b' });
+                            setTipUsed(true);
+                            showMetricMessage("Fase orgánica transferida. El ADN se queda.", "success");
+                        }
+                        else {
+                            addPenalty(2, "Extracción inválida", "No hay líquido disponible o válido para aspirar en este tubo en esta etapa.");
+                        }
+                    } else {
+                        // DISPENSAR EN EL TUBO DE TRABAJO
+                        AudioEngine.playPour();
+                        setTubes(prev => {
+                            const newPhases = [...prev[tubeId].phases];
+                            newPhases.push({ type: tipContent.type, color: tipContent.color, vol: tipContent.vol, label: tipContent.type });
+                            return { ...prev, [tubeId]: { ...prev[tubeId], phases: newPhases } };
+                        });
+                        setTipContent({ vol: 0, type: null, color: 'transparent' });
+                    }
+                }
+            };
+
+            const handleTrashClick = () => {
+                AudioEngine.init();
+                if (hasTip) {
+                    AudioEngine.playPlastic();
+                    setHasTip(null);
+                    setTipContent({ vol: 0, type: null, color: 'transparent' });
+                    setTipUsed(false);
+                    showMetricMessage("Punta desechada correctamente en el contenedor RPBI.", "success", 3000);
+                }
+            };
+
+            const loadLevel = (idx) => {
+                AudioEngine.init();
+                AudioEngine.playClick();
+                setCurrentLevel(idx);
+                setCompletedSteps([]);
+                setTipContent({ vol: 0, type: null, color: 'transparent' });
+                setActivePipette(null);
+                setHasTip(null);
+                setTipUsed(false);
+                
+                if (idx === 0) {
+                    setScore(100);
+                    setPenalties([]);
+                    showMetricMessage("¡Iniciamos protocolo Trizol! Trabaja en campana y cuidado con las RNasas.", "normal");
+                }
+            };
+
+            // PIPETA CONTROLS
+            const handleVolChange = (dir) => {
+                AudioEngine.init();
+                AudioEngine.playClick();
+                const p = PIPETTES[activePipette];
+                let current = parseFloat(tempVol) || p.min;
+                let nextVol = dir === 'up' ? current + p.step : current - p.step;
+                nextVol = Math.max(p.min, Math.min(p.max, nextVol));
+                setTempVol(nextVol.toFixed(1));
+            };
+            const saveVol = () => {
+                AudioEngine.init();
+                AudioEngine.playClick();
+                let v = parseFloat(tempVol);
+                setVolumes({ ...volumes, [activePipette]: v });
+                setShowVolModal(false);
+            };
+
+            // SVGs Componentes
+            const SVGTipBox = ({ type, isOpen }) => {
+                const boxColor = PIPETTES[type].color;
+                return (
+                    <div className="relative has-tooltip flex flex-col items-center transition-transform hover:-translate-y-1" onClick={() => {
+                        AudioEngine.init();
+                        AudioEngine.playPlastic();
+                        if (!isOpen) setBoxesOpen({...boxesOpen, [type]: true});
+                        else if (activePipette === type && !hasTip) {
+                            setHasTip(type);
+                            setTipUsed(false);
+                            showMetricMessage(`Punta ${type} montada. No olvides tapar la caja.`, "normal", 4000);
+                        }
+                        else setBoxesOpen({...boxesOpen, [type]: false});
+                    }}>
+                        <span className="tooltip">Caja Puntas {type}</span>
+                        <div className="text-slate-600 bg-white/80 px-2 py-0.5 rounded shadow-sm text-[10px] font-bold mb-2 border border-slate-300">Puntas {type}</div>
+                        <svg width="60" height="50" viewBox="0 0 100 80" className="svg-hover-glow cursor-pointer">
+                            <path d="M10,40 L90,40 L85,80 L15,80 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="2" />
+                            {isOpen && <g opacity="0.6">{[20, 40, 60, 80].map(x => [45, 55, 65].map(y => <circle key={`${x}-${y}`} cx={x} cy={y} r="3" fill="#cbd5e1" />))}</g>}
+                            <g transform={isOpen ? "translate(0, -30) rotate(-10)" : "translate(0, 0)"} className="transition-transform duration-300">
+                                <path d="M10,40 L90,40 L85,10 L15,10 Z" fill={boxColor} fillOpacity="0.5" stroke={boxColor} strokeWidth="3" />
+                                <rect x="40" y="5" width="20" height="5" fill="#f1f5f9" />
+                            </g>
+                        </svg>
+                    </div>
+                );
+            };
+
+            const SVGPipette = ({ type, isRack = false }) => {
+                const p = PIPETTES[type];
+                const isActive = activePipette === type;
+                return (
+                    <div className={`relative flex flex-col items-center transition-all ${isRack ? 'has-tooltip svg-hover-glow' : ''} ${isRack && isActive ? 'opacity-20' : 'opacity-100'}`}
+                         onClick={isRack ? () => { AudioEngine.init(); AudioEngine.playClick(); setActivePipette(type); showMetricMessage(`Pipeta ${type} seleccionada.`); } : null}>
+                        {isRack && <span className="tooltip">Usar {type}</span>}
+                        {isRack && <div className="text-white text-[10px] font-bold mb-1 bg-slate-700 px-2 py-0.5 rounded shadow">{type}</div>}
+                        <svg width={isRack ? "25" : "40"} height={isRack ? "120" : "180"} viewBox="0 0 40 180" className={!isRack ? "svg-drop-shadow" : ""}>
+                            <rect x="16" y="0" width="8" height="20" fill="#f8fafc" stroke="#94a3b8" />
+                            <rect x="12" y="20" width="16" height="15" fill={p.color} />
+                            <path d="M10,35 L30,35 L34,90 L6,90 Z" fill="#ffffff" stroke="#94a3b8" strokeWidth="2" />
+                            {!isRack && (
+                                <g onClick={() => { AudioEngine.init(); AudioEngine.playClick(); setTempVol(volumes[type]||p.min); setShowVolModal(true); }} className="cursor-pointer hover:opacity-90">
+                                    <rect x="12" y="50" width="16" height="25" fill="#1e293b" rx="2" />
+                                    <text x="20" y="66" fill="#10b981" fontSize="10" textAnchor="middle" className="pipette-lcd">{volumes[type] || '0'}</text>
+                                </g>
+                            )}
+                            <rect x="6" y="30" width="4" height="25" fill="#cbd5e1" rx="2" />
+                            <polygon points="12,90 28,90 22,140 18,140" fill="#f1f5f9" stroke="#94a3b8" strokeWidth="2" />
+                            {(!isRack && hasTip === type) && (
+                                <g className="animate-tip">
+                                    <polygon points="17,140 23,140 21,175 19,175" fill={p.tipColor} stroke="#94a3b8" strokeWidth="1" />
+                                    {tipContent.vol > 0 && <polygon points="18,150 22,150 20.5,170 19.5,170" fill={tipContent.color} opacity="0.9" />}
+                                </g>
+                            )}
+                        </svg>
+                    </div>
+                );
+            };
+
+            const SVGReagentBottle = ({ id, label, color, onClick }) => (
+                <div className="flex flex-col items-center cursor-pointer has-tooltip svg-hover-glow" onClick={onClick}>
+                    <span className="tooltip">Aspirar {label}</span>
+                    <div className="text-slate-700 bg-white/90 px-2 py-0.5 rounded shadow-sm text-[9px] font-bold mb-1 max-w-[80px] text-center border border-slate-300">{label}</div>
+                    <svg width="40" height="60" viewBox="0 0 50 80">
+                        <path d="M 15 5 L 35 5 L 35 20 L 45 30 L 45 80 L 5 80 L 5 30 L 15 20 Z" fill="rgba(255,255,255,0.7)" stroke="#64748b" strokeWidth="2" />
+                        <path d="M 15 5 L 35 5 L 35 15 L 15 15 Z" fill="#334155" />
+                        <path d="M 6 40 L 44 40 L 44 79 L 6 79 Z" fill={color} opacity="0.8" />
+                    </svg>
+                </div>
+            );
+
+            const SVGTestTube = ({ id, tubeData, onClick }) => {
+                const totalVol = tubeData.phases.reduce((acc, p) => acc + p.vol, 0);
+                let currentY = 90; // Bottom of tube
+                
+                return (
+                    <div className="flex flex-col items-center cursor-pointer has-tooltip svg-hover-glow relative" onClick={onClick}>
+                        <span className="tooltip">Interactuar con {tubeData.label}</span>
+                        {/* Botón de Mix manual que flota cerca del tubo principal */}
+                        {id === 't_main' && currentLevel === 0 && completedSteps.includes('l1_4') && !completedSteps.includes('l1_5') && (
+                            <div className="absolute -right-8 top-10 bg-blue-100 text-blue-800 text-[9px] font-bold p-1 rounded shadow cursor-pointer border border-blue-300 animate-bounce" onClick={(e) => { e.stopPropagation(); handleTubeClick('hand_mix', false, null, id); }}>Agitar Manual</div>
+                        )}
+                        <div className="text-white bg-slate-800 px-2 py-0.5 rounded shadow-sm text-[10px] font-bold mb-2">{tubeData.label}</div>
+                        <svg width="50" height="100" viewBox="0 0 50 100" className={isMixing && id === 't_main' ? 'anim-shake' : ''}>
+                            {/* Cuerpo del tubo */}
+                            <path d="M 10 10 L 40 10 L 40 70 Q 40 95 25 95 Q 10 95 10 70 Z" fill="rgba(255,255,255,0.4)" stroke="#475569" strokeWidth="2" />
+                            <clipPath id={`tube-clip-${id}`}>
+                                <path d="M 11 11 L 39 11 L 39 70 Q 39 94 25 94 Q 11 94 11 70 Z" />
+                            </clipPath>
+                            
+                            {/* Fases (líquidos apilados de abajo hacia arriba) */}
+                            <g clipPath={`url(#tube-clip-${id})`}>
+                                {tubeData.phases.slice().reverse().map((phase, idx) => {
+                                    const height = Math.max(10, (phase.vol / 300) * 40); 
+                                    const y = currentY - height;
+                                    currentY = y;
+                                    return <rect key={idx} x="10" y={y} width="30" height={height} fill={phase.color} opacity="0.9" />
+                                })}
+                                
+                                {/* Pellet */}
+                                {tubeData.pellet && (
+                                    <path d="M 20 90 Q 25 85 30 90 Q 25 95 20 90 Z" fill={tubeData.pellet.color} stroke="#94a3b8" />
+                                )}
+                            </g>
+                            {/* Reflejo cristal */}
+                            <path d="M 15 20 L 20 20 L 20 80 L 15 75 Z" fill="rgba(255,255,255,0.6)" />
+                        </svg>
+                        
+                        {/* Etiquetas visuales de las fases si está separado */}
+                        {tubeData.separated && (
+                            <div className="absolute -left-16 top-10 flex flex-col gap-2 text-[8px] font-bold text-slate-600">
+                                <span className="text-pink-600">→ Acuosa (ARN)</span>
+                                <span className="text-slate-400">→ Interfase</span>
+                                <span className="text-red-800">→ Orgánica</span>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            const SVGTrashBinRPBI = () => (
+                <div className={`relative w-24 h-24 flex-shrink-0 flex flex-col items-center justify-end pb-2 cursor-pointer transition-transform hover:-translate-y-2 active:scale-95`} onClick={handleTrashClick}>
+                    <span className="tooltip bg-red-900 text-white">Expulsar Punta (RPBI)</span>
+                    <span className="text-red-100 bg-red-800 px-2 py-0.5 rounded shadow-sm text-[10px] font-bold mb-1 border border-red-900">RPBI</span>
+                    <svg width="60" height="50" viewBox="0 0 60 50">
+                        {/* Cuerpo del basurero RPBI */}
+                        <path d="M10,15 L50,15 L45,45 L15,45 Z" fill="#dc2626" stroke="#991b1b" strokeWidth="2" />
+                        <path d="M5,10 L55,10 L55,15 L5,15 Z" fill="#b91c1c" />
+                        {/* Señal de advertencia biológica simplificada */}
+                        <polygon points="30,22 22,38 38,38" fill="#facc15" />
+                        <path d="M30,26 L30,32 M30,35 L30,36" stroke="#000" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                </div>
+            );
+
+            // --- DR METRIC HUD ---
+            const DrMetricHUD = () => (
+                <div className="dr-metric-hud animate-fade-in-up">
+                    <div className="dr-metric-avatar">
+                        <svg viewBox="0 0 100 100" className={`w-full h-full ${doctorEmotion === 'thinking' ? 'animate-pulse' : 'anim-float'}`}>
+                            <defs>
+                                <linearGradient id="screenGradDr" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#1e293b" />
+                                    <stop offset="100%" stopColor="#0f172a" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M 50 25 L 50 10" stroke="#a855f7" strokeWidth="3" strokeLinecap="round" />
+                            <circle cx="50" cy="8" r="5" fill={doctorEmotion === 'warning' ? '#f59e0b' : '#a855f7'} className="animate-pulse" />
+                            <rect x="15" y="25" width="70" height="60" rx="15" fill="#0f172a" stroke="#a855f7" strokeWidth="4" />
+                            <rect x="25" y="35" width="50" height="40" rx="8" fill="url(#screenGradDr)" stroke="#334155" strokeWidth="2" />
+                            
+                            {doctorEmotion === 'success' ? (
+                                <g fill="none" stroke="#34d399" strokeWidth="4" strokeLinecap="round">
+                                    <path d="M 32 48 Q 37 40 42 48" />
+                                    <path d="M 58 48 Q 63 40 68 48" />
+                                    <path d="M 35 60 Q 50 80 65 60" />
+                                </g>
+                            ) : doctorEmotion === 'warning' ? (
+                                <g fill="none" stroke="#fbbf24" strokeWidth="4" strokeLinecap="round">
+                                    <path d="M 32 46 Q 37 42 42 45" />
+                                    <path d="M 58 45 Q 63 42 68 46" />
+                                    <path d="M 45 70 Q 50 68 55 70" />
+                                </g>
+                            ) : (
+                                <g fill="#a855f7">
+                                    <circle cx="37" cy="48" r="5" className={doctorEmotion === 'thinking' ? 'animate-ping' : ''} />
+                                    <circle cx="63" cy="48" r="5" className={doctorEmotion === 'thinking' ? 'animate-ping' : ''} />
+                                    <path d="M 40 65 Q 50 75 60 65" fill="none" stroke="#a855f7" strokeWidth="3" strokeLinecap="round" />
+                                </g>
+                            )}
+                        </svg>
+                    </div>
+                    <div className="dr-metric-bubble" style={{ borderColor: doctorEmotion === 'success' ? '#10b981' : doctorEmotion === 'warning' ? '#f59e0b' : '#a855f7' }}>
+                        <p className="font-bold mb-1" style={{ color: doctorEmotion === 'success' ? '#10b981' : doctorEmotion === 'warning' ? '#f59e0b' : '#a855f7' }}>Dr. Metric dice:</p>
+                        <p>{metricMessage}</p>
+                    </div>
+                </div>
+            );
+
+            const ex = EXERCISE_DATA[currentLevel];
+
+            return (
+                <div className="flex h-screen w-full bg-slate-900 relative">
+                    
+                    {/* Componente del Asistente Virtual (Flotando abajo a la izquierda) */}
+                    <DrMetricHUD />
+
+                    {/* Botón de Información / Créditos (Top Left) */}
+                    <div className="absolute top-6 left-6 z-50">
+                        <button onClick={() => { AudioEngine.init(); AudioEngine.playClick(); setShowCredits(true); }} className="bg-white/80 text-[#4c1d95] px-4 py-2 rounded-full shadow-lg border border-[#4c1d95]/30 hover:bg-white font-bold text-xs transition-all transform hover:scale-105 flex items-center gap-2 has-tooltip hover:shadow-purple-500/50">
+                            <span className="text-lg leading-none">📚</span> Ver Info de Tesis
+                        </button>
+                    </div>
+
+                    {/* -- ÁREA DE SIMULACIÓN (IZQUIERDA) -- */}
+                    <div className="flex-grow relative bg-gradient-to-br from-[#e9e4f0] to-[#d3cce3] lab-bg-grid flex flex-col shadow-[inset_-10px_0_20px_rgba(0,0,0,0.05)] overflow-hidden">
+                        
+                        {/* Repisa Superior */}
+                        <div className="absolute top-[10%] w-full flex justify-center z-10">
+                            <div className="w-[70%] h-5 bg-[#cbd5e1] rounded shadow-[0_15px_25px_rgba(0,0,0,0.15)] border-b-[3px] border-[#94a3b8] flex justify-around items-end px-10">
+                                <SVGTipBox type="P20" isOpen={boxesOpen.P20} />
+                                <SVGTipBox type="P200" isOpen={boxesOpen.P200} />
+                                <SVGTipBox type="P1000" isOpen={boxesOpen.P1000} />
+                            </div>
+                        </div>
+
+                        {/* HUD de Pipeta en Mano */}
+                        {activePipette && (
+                            <div className="absolute top-[40%] left-[30%] transform -translate-x-1/2 -translate-y-1/2 bg-white/80 backdrop-blur-md p-5 rounded-3xl border border-white/80 shadow-2xl z-40 flex items-center gap-6 pointer-events-none transition-all">
+                                <div>
+                                    <div className="font-bold text-slate-800 text-xs uppercase tracking-wider mb-1">Mano Activa</div>
+                                    <div className="text-lg font-bold text-[#5b21b6]">Pipeta <span className="font-black bg-[#5b21b6] text-white px-2 py-0.5 rounded ml-1">{activePipette}</span></div>
+                                    {hasTip && <div className="text-xs text-green-700 font-bold mt-2">✓ Punta montada</div>}
+                                    {tipContent.vol > 0 && <div className="text-xs text-red-600 font-bold mt-1">💧 {tipContent.vol} µL extraídos</div>}
+                                </div>
+                                <div className="pointer-events-auto filter drop-shadow-xl scale-110 origin-top">
+                                    <SVGPipette type={activePipette} isRack={false} />
+                                    <div className="text-center text-[9px] font-bold text-white mt-2 bg-slate-800 px-2 py-1 rounded-full cursor-pointer pointer-events-auto shadow-md hover:bg-slate-700 transition" onClick={() => { AudioEngine.init(); AudioEngine.playClick(); setTempVol(volumes[activePipette]||PIPETTES[activePipette].min); setShowVolModal(true);}}>Ajustar (Vol)</div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Equipos (Centrífuga y Reloj) flotando a la derecha */}
+                        <div className="absolute top-[30%] right-10 flex flex-col gap-6 z-20">
+                            <div className="flex flex-col items-center cursor-pointer has-tooltip svg-hover-glow bg-white p-3 rounded-2xl shadow-lg border border-slate-200" onClick={() => handleActionClick('centrifuge')}>
+                                <span className="tooltip">Centrifugar Muestras</span>
+                                <div className={`w-16 h-16 rounded-full border-4 border-slate-300 flex items-center justify-center bg-slate-100 overflow-hidden relative ${isCentrifuging ? 'border-blue-400' : ''}`}>
+                                    <div className={`w-12 h-1 bg-slate-400 absolute ${isCentrifuging ? 'anim-spin-fast bg-blue-500' : ''}`}></div>
+                                    <div className={`w-1 h-12 bg-slate-400 absolute ${isCentrifuging ? 'anim-spin-fast bg-blue-500' : ''}`}></div>
+                                    <div className="w-4 h-4 rounded-full bg-slate-600 z-10"></div>
+                                </div>
+                                <span className="text-[10px] font-black text-slate-700 mt-2 uppercase tracking-wide">Centrífuga</span>
+                            </div>
+
+                            <div className="flex flex-col items-center cursor-pointer has-tooltip svg-hover-glow bg-white p-3 rounded-2xl shadow-lg border border-slate-200" onClick={() => handleActionClick('timer')}>
+                                <span className="tooltip">Incubar 5/10 min</span>
+                                <div className={`text-4xl ${isIncubating ? 'animate-pulse scale-110' : ''}`}>⏱️</div>
+                                <span className="text-[10px] font-black text-slate-700 mt-1 uppercase tracking-wide">Incubador</span>
+                            </div>
+                        </div>
+
+                        {/* Mesa de Laboratorio Flexbox */}
+                        <div className="absolute bottom-0 w-full flex flex-col z-10">
+                            <div className="w-full h-[160px] bg-[#94a3b8] border-t-[10px] border-[#64748b] flex justify-between items-end pb-4 px-12 shadow-[inset_0_20px_20px_rgba(0,0,0,0.1)] gap-6">
+                                
+                                {/* 1. Rack de Pipetas */}
+                                <div className="relative w-48 h-48 flex-shrink-0 flex justify-around items-end pb-2">
+                                    <div className="absolute bottom-0 w-full h-4 bg-[#e2e8f0] rounded-t-sm shadow border-b border-[#94a3b8]"></div>
+                                    <div className="absolute top-8 w-full h-6 bg-white shadow-sm border-b border-slate-200"></div>
+                                    <SVGPipette type="P20" isRack={true} />
+                                    <SVGPipette type="P200" isRack={true} />
+                                    <SVGPipette type="P1000" isRack={true} />
+                                </div>
+
+                                {/* 2. Reactivos (Botellas) */}
+                                <div className="relative w-64 h-[100px] flex-shrink-0 flex justify-center items-end gap-4 pb-2 bg-slate-300 rounded-lg shadow-inner border-2 border-slate-400 px-2">
+                                    <span className="absolute top-1 left-2 text-[9px] font-bold text-slate-500 uppercase">Reactivos</span>
+                                    {currentLevel === 0 && (
+                                        <>
+                                            <SVGReagentBottle label="Trizol" color="#fca5a5" onClick={() => handleTubeClick('trizol', true, '#fca5a5')} />
+                                            <SVGReagentBottle label="Cloroformo" color="rgba(255,255,255,0.5)" onClick={() => handleTubeClick('chloroform', true, 'rgba(255,255,255,0.5)')} />
+                                        </>
+                                    )}
+                                    {currentLevel === 1 && (
+                                        <SVGReagentBottle label="Isopropanol" color="rgba(255,255,255,0.5)" onClick={() => handleTubeClick('isopropanol', true, 'rgba(255,255,255,0.5)')} />
+                                    )}
+                                    {currentLevel === 2 && (
+                                        <>
+                                            <SVGReagentBottle label="Etanol 100%" color="rgba(255,255,255,0.8)" onClick={() => handleTubeClick('ethanol100', true, 'rgba(255,255,255,0.8)')} />
+                                            <SVGReagentBottle label="Isopropanol" color="rgba(255,255,255,0.5)" onClick={() => handleTubeClick('isopropanol', true, 'rgba(255,255,255,0.5)')} />
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* 3. Gradilla de Muestras (Tubos Eppendorf) */}
+                                <div className="relative w-64 h-[120px] flex-shrink-0 flex justify-center items-end gap-6 pb-2 bg-[#7e8e9f] rounded-lg shadow-[inset_0_-5px_15px_rgba(0,0,0,0.2)] border-2 border-[#5c6d80] px-4">
+                                    <span className="absolute top-2 left-3 text-[10px] font-bold text-slate-300 uppercase tracking-widest">Muestras</span>
+                                    <SVGTestTube id="t_main" tubeData={tubes.t_main} onClick={() => handleTubeClick(null, false, null, 't_main')} />
+                                    {currentLevel >= 1 && <SVGTestTube id="t_rna" tubeData={tubes.t_rna} onClick={() => handleTubeClick(null, false, null, 't_rna')} />}
+                                    {currentLevel >= 2 && <SVGTestTube id="t_prot" tubeData={tubes.t_prot} onClick={() => handleTubeClick(null, false, null, 't_prot')} />}
+                                </div>
+
+                                {/* 4. Basurero RPBI */}
+                                <SVGTrashBinRPBI />
+                            </div>
+
+                            {/* Frente Cajones */}
+                            <div className="w-full h-16 bg-[#475569] border-t-[3px] border-[#334155] flex justify-center gap-6 px-10 shadow-2xl">
+                                {[1, 2, 3, 4].map(i => (
+                                    <div key={i} className="flex-1 max-w-[200px] h-12 mt-2 bg-[#64748b] border border-[#334155] rounded-sm shadow-inner flex justify-center pt-2">
+                                        <div className="w-20 h-2 bg-[#94a3b8] rounded-full shadow-md border border-[#475569]"></div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Botón Reset Inferior */}
+                        <div className="absolute bottom-6 left-6 z-50">
+                            <button onClick={() => {setTubes(initialTubes); loadLevel(0);}} className="bg-white text-slate-700 px-6 py-2 rounded-lg shadow-lg border border-slate-200 hover:bg-slate-50 font-bold text-sm transition-transform hover:scale-105">
+                                Reiniciar Extracción ↺
+                            </button>
+                        </div>
+
+                        {/* Modal de Créditos del Proyecto */}
+                        {showCredits && (
+                            <div className="absolute inset-0 bg-slate-900/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowCredits(false)}>
+                                <div className="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-3xl text-slate-800 border-4 border-slate-300 relative animate-fade-in-up" onClick={e => e.stopPropagation()}>
+                                    <button onClick={() => { AudioEngine.init(); AudioEngine.playClick(); setShowCredits(false); }} className="absolute top-4 right-4 text-slate-400 hover:text-red-500 font-bold text-3xl transition-colors">&times;</button>
+                                    
+                                    <div className="flex justify-around items-center mb-6 border-b-2 border-slate-300 pb-4">
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/f/f8/Logo_Instituto_Polit%C3%A9cnico_Nacional.png" alt="IPN" className="h-20 object-contain drop-shadow-md" onError={(e)=>{e.target.style.display='none'}} />
+                                        <div className="text-center font-bold text-[#4c1d95] uppercase tracking-widest px-4">
+                                            Universidad Abierta y a Distancia de México<br/>
+                                            División de Ciencias de la Salud Biológicas y Ambientales<br/>
+                                            Ingeniería en Biotecnología
+                                        </div>
+                                        <img src="https://upload.wikimedia.org/wikipedia/commons/2/22/Logo_UnADM.png" alt="UnADM" className="h-16 object-contain drop-shadow-md" onError={(e)=>{e.target.style.display='none'}} />
+                                    </div>
+                                    
+                                    <div className="bg-slate-50 p-6 rounded-2xl shadow-inner mb-6 text-center border border-slate-200">
+                                        <p className="font-bold text-slate-800 italic text-sm md:text-base">
+                                            "Evaluación del efecto potencial del flavanol (-)-epicatequina en la repolarización de macrófagos humanos de fenotipo proinflamatorio a fenotipo antiinflamatorio."
+                                        </p>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm mb-6">
+                                        <div className="bg-purple-50 p-4 rounded-xl border border-purple-200 shadow-sm text-left">
+                                            <p className="text-slate-500 font-bold uppercase tracking-wider mb-2 text-xs">Presenta:</p>
+                                            <p className="font-black text-[#4c1d95] text-xl">Edsel Yahvi Méndez Hernández</p>
+                                            <p className="font-bold text-slate-500 mt-1">Matrícula: ES181001269</p>
+                                        </div>
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm text-left">
+                                            <p className="text-slate-500 font-bold uppercase tracking-wider mb-2 text-xs">Asesores:</p>
+                                            <p className="font-bold text-slate-800">Dra. Rocío del Pilar Rueda Zozaya <span className="font-normal text-slate-500">(Interno)</span></p>
+                                            <p className="font-bold text-slate-800 mt-1">Dra. Nayelli Nájera García <span className="font-normal text-slate-500">(Externo)</span></p>
+                                            <p className="font-bold text-slate-800 mt-1">Yuridia Martínez Meza <span className="font-normal text-slate-500">(Segundo Externo)</span></p>
+                                        </div>
+                                    </div>
+
+                                    <div className="text-center font-bold text-slate-500 text-xs uppercase tracking-widest border-t border-slate-300 pt-4">
+                                        Laboratorio de Investigación Cardiometabólica (LICAM)<br/>
+                                        Escuela Superior de Medicina IPN. CDMX, 2026.
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Modal Profesional de Ajuste de Volumen */}
+                        {showVolModal && (
+                            <div className="absolute inset-0 bg-slate-900/60 z-50 flex items-center justify-center backdrop-blur-sm">
+                                <div className="bg-white p-8 rounded-2xl shadow-2xl w-96 text-center border border-slate-100">
+                                    <div className="w-16 h-16 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-purple-100"><span className="text-3xl">⚙️</span></div>
+                                    <h3 className="font-bold text-[#4c1d95] text-2xl mb-1">Ajustar Volumen</h3>
+                                    <p className="text-sm text-slate-500 mb-6 font-medium bg-slate-50 py-1 rounded">Rango Permitido: {PIPETTES[activePipette].min} - {PIPETTES[activePipette].max} µL</p>
+                                    
+                                    <div className="flex items-center justify-center gap-6 mb-8 bg-slate-100 p-4 rounded-xl border border-slate-200 shadow-inner">
+                                        <button onClick={() => handleVolChange('down')} className="w-12 h-12 bg-white rounded-full font-bold text-3xl shadow text-slate-600 hover:text-purple-600 transition-all">-</button>
+                                        <div className="flex flex-col items-center">
+                                            <input type="number" value={tempVol} onChange={(e) => setTempVol(e.target.value)}
+                                                   className="w-28 text-center text-4xl font-mono font-bold bg-transparent border-b-4 border-[#4c1d95] focus:outline-none text-slate-800"
+                                                   step={PIPETTES[activePipette].step} />
+                                            <span className="text-xs font-bold text-slate-400 mt-2 uppercase tracking-widest">Microlitros</span>
+                                        </div>
+                                        <button onClick={() => handleVolChange('up')} className="w-12 h-12 bg-white rounded-full font-bold text-3xl shadow text-slate-600 hover:text-purple-600 transition-all">+</button>
+                                    </div>
+                                    
+                                    <div className="flex gap-4">
+                                        <button onClick={() => { AudioEngine.init(); AudioEngine.playClick(); setShowVolModal(false); }} className="flex-1 py-3 text-slate-500 font-bold hover:bg-slate-50 rounded-xl transition">Cancelar</button>
+                                        <button onClick={saveVol} className="flex-1 py-3 bg-[#5b21b6] text-white font-bold rounded-xl shadow-lg hover:bg-[#4c1d95] transition">Guardar volumen</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* -- ÁREA DEL CUADERNO (DERECHA) -- */}
+                    <div className="w-[420px] bg-white flex flex-col shadow-[-15px_0_30px_rgba(0,0,0,0.1)] z-20 border-l border-slate-200">
+                        <div className="bg-notebook-header text-white p-5 flex items-center gap-5 relative overflow-hidden">
+                            <div className="absolute -right-4 top-0 opacity-10 scale-150">📝</div>
+                            <div className="bg-white/20 p-3 rounded-lg backdrop-blur shadow-sm"><span className="text-2xl">📝</span></div>
+                            <div>
+                                <div className="text-[10px] font-black text-purple-200 tracking-widest mb-1">PROTOCOLO DE LABORATORIO</div>
+                                <div className="text-lg font-bold leading-none">Extracción por Trizol</div>
+                            </div>
+                        </div>
+                        <div className="bg-notebook-sub text-white px-6 py-4 flex items-center justify-between shadow-inner border-y border-slate-800">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full border-2 border-white/50 flex items-center justify-center font-bold text-sm">F{currentLevel + 1}</div>
+                                <span className="text-base font-bold tracking-widest uppercase">Paso Actual</span>
+                            </div>
+                            {/* Puntuación en tiempo real en la libreta */}
+                            <div className="flex items-center gap-2 bg-white/20 px-3 py-1 rounded-full">
+                                <span className="text-sm font-bold">Puntos:</span>
+                                <span className={`font-black text-lg ${score < 70 ? 'text-red-300' : 'text-green-300'}`}>{score}</span>
+                            </div>
+                        </div>
+                        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-4">
+                            <div className="flex-1 h-3 bg-slate-200 rounded-full overflow-hidden shadow-inner">
+                                <div className="h-full bg-purple-500 transition-all duration-700 ease-out" style={{ width: `${(completedSteps.length / ex.steps.length) * 100}%` }}></div>
+                            </div>
+                            <div className="text-sm font-black text-slate-500 bg-white px-3 py-1 rounded-full shadow-sm border border-slate-200">
+                                {completedSteps.length}/{ex.steps.length}
+                            </div>
+                        </div>
+
+                        {currentLevel === EXERCISE_DATA.length - 1 && completedSteps.length === EXERCISE_DATA[currentLevel].steps.length ? (
+                            <div className="p-6 overflow-y-auto flex-1 flex flex-col animate-fade-in">
+                                <div className={`p-6 rounded-2xl border-2 shadow-lg mb-6 ${score >= 90 ? 'bg-green-50 border-green-200' : score >= 70 ? 'bg-yellow-50 border-yellow-200' : 'bg-red-50 border-red-200'}`}>
+                                    <h3 className="text-2xl font-black text-center mb-2 text-slate-800">Evaluación Práctica</h3>
+                                    <div className="flex justify-center items-center gap-4 mb-4">
+                                        <div className="text-5xl">
+                                            {score >= 90 ? '🏆' : score >= 70 ? '👍' : '🤔'}
+                                        </div>
+                                        <div className="text-center">
+                                             <div className="text-sm font-bold text-slate-500 uppercase">Puntuación Final</div>
+                                             <div className={`text-4xl font-black ${score >= 90 ? 'text-green-600' : score >= 70 ? 'text-yellow-600' : 'text-red-600'}`}>{score} / 100</div>
+                                        </div>
+                                    </div>
+                                     <p className="text-center font-bold text-slate-700 mb-4">
+                                        {score >= 90 ? '¡Excelente técnica! Estás listo para el laboratorio real.' : score >= 70 ? 'Buen trabajo, pero cuida la limpieza para evitar degradación de ácidos nucleicos.' : 'Debes practicar más. Revisa los errores abajo para evitar riesgos biológicos.'}
+                                    </p>
+
+                                    {penalties.length > 0 && (
+                                        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mt-4">
+                                            <h4 className="font-bold text-red-600 mb-3 flex items-center">⚠️ Errores y Penalizaciones:</h4>
+                                            <ul className="space-y-3">
+                                                {penalties.map((p, idx) => (
+                                                    <li key={idx} className="text-sm border-b border-slate-100 pb-2 last:border-0">
+                                                        <div className="flex justify-between font-bold text-slate-800">
+                                                            <span>{p.reason}</span>
+                                                            <span className="text-red-500">-{p.points} pts</span>
+                                                        </div>
+                                                         <p className="text-slate-600 mt-1 text-xs italic">💡 {p.advice}</p>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <button 
+                                    onClick={() => {setTubes(initialTubes); loadLevel(0);}}
+                                    className="w-full bg-[#5b21b6] text-white py-4 rounded-xl font-bold shadow-lg hover:bg-[#4c1d95] transition-transform hover:scale-105"
+                                >
+                                    ↻ Reiniciar Extracción Completa
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="p-6 overflow-y-auto flex-1 flex flex-col">
+                                <div className="bg-slate-100 p-4 rounded-xl border border-slate-200 mb-6 shadow-inner">
+                                    <h3 className="font-bold text-[#4c1d95] text-md mb-2">{ex.title}</h3>
+                                    <p className="text-xs text-slate-600 font-medium leading-relaxed">{ex.desc}</p>
+                                </div>
+                                
+                                <div className="ml-2 pl-4 border-l-[3px] border-slate-200 flex-1">
+                                    {ex.steps.map((step, idx) => {
+                                        const isDone = completedSteps.includes(step.id);
+                                        const isActive = !isDone && (idx === 0 || completedSteps.includes(ex.steps[idx-1].id));
+                                        
+                                        return (
+                                            <div key={step.id} className={`flex items-start gap-4 mb-6 transition-all duration-300 ${isDone ? 'opacity-40' : isActive ? 'transform translate-x-2' : 'opacity-60'}`}>
+                                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold shrink-0 
+                                                    ${isDone ? 'bg-green-500 text-white shadow-inner' : isActive ? 'bg-purple-500 text-white shadow-lg ring-4 ring-purple-200' : 'bg-slate-200 text-slate-500'}`}>
+                                                    {isDone ? '✓' : idx + 1}
+                                                </div>
+                                                <div className={`text-sm ${isDone ? 'line-through text-slate-400' : 'text-slate-700 font-bold'} flex-1 leading-tight mt-1`}>
+                                                    {step.text}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {completedSteps.length === ex.steps.length && currentLevel < EXERCISE_DATA.length - 1 && (
+                                    <button onClick={() => loadLevel(currentLevel + 1)} className="w-full bg-[#5b21b6] text-white py-4 rounded-xl font-black shadow-xl hover:bg-[#4c1d95] transition-transform hover:scale-105 text-lg mt-6 border-b-4 border-[#4c1d95]">
+                                        Siguiente Fase ▶
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<TrizolSimulator />);
+    </script>
+</body>
+</html>
